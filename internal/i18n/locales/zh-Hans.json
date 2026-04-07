@@ -1,0 +1,19 @@
+{
+  "signIn.title": "登录",
+  "signIn.continueWith": "通过 {{provider}} 继续",
+  "signIn.orUsePasskey": "或使用通行密钥登录",
+  "userButton.signOut": "退出登录",
+  "userButton.manageAccount": "管理账户",
+  "legal.title": "需要确认协议",
+  "legal.pleaseRead": "请在继续之前阅读并同意{{label}}。",
+  "legal.viewDocument": "查看{{label}}",
+  "legal.nameLabel": "全名",
+  "legal.namePlaceholder": "请输入您的全名",
+  "legal.dateLabel": "日期",
+  "legal.checkboxLabel": "我已阅读并同意{{label}}",
+  "legal.submitButton": "同意并继续",
+  "error.notOnTheList": "您不在名单上。",
+  "error.invalidState": "无效请求，请重试。",
+  "error.sessionExpired": "您的会话已过期，请重新登录。",
+  "error.tosRequired": "您必须同意{{label}}才能继续。"
+}

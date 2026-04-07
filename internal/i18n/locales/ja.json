@@ -1,0 +1,19 @@
+{
+  "signIn.title": "サインイン",
+  "signIn.continueWith": "{{provider}}で続ける",
+  "signIn.orUsePasskey": "またはパスキーでサインイン",
+  "userButton.signOut": "サインアウト",
+  "userButton.manageAccount": "アカウント管理",
+  "legal.title": "同意が必要です",
+  "legal.pleaseRead": "続行する前に{{label}}をお読みいただき、同意してください。",
+  "legal.viewDocument": "{{label}}を表示",
+  "legal.nameLabel": "氏名",
+  "legal.namePlaceholder": "氏名を入力してください",
+  "legal.dateLabel": "日付",
+  "legal.checkboxLabel": "{{label}}を読み、同意します",
+  "legal.submitButton": "同意して続ける",
+  "error.notOnTheList": "リストに登録されていません。",
+  "error.invalidState": "無効なリクエストです。もう一度お試しください。",
+  "error.sessionExpired": "セッションが期限切れです。再度サインインしてください。",
+  "error.tosRequired": "続行するには{{label}}に同意する必要があります。"
+}

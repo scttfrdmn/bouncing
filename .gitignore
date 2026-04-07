@@ -1,0 +1,33 @@
+# Build output
+bin/
+dist/
+
+# Data directory (SQLite db, keys)
+data/
+
+# Go
+*.test
+*.out
+coverage.txt
+
+# Config with secrets
+bouncing.yaml
+
+# Node
+node_modules/
+sdk/js/**/node_modules/
+sdk/js/**/.next/
+sdk/js/**/dist/
+sdk/js/**/.turbo/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# goreleaser
+.goreleaser/

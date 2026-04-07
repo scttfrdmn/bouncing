@@ -1,0 +1,19 @@
+{
+  "signIn.title": "Anmelden",
+  "signIn.continueWith": "Weiter mit {{provider}}",
+  "signIn.orUsePasskey": "Oder mit einem Passkey anmelden",
+  "userButton.signOut": "Abmelden",
+  "userButton.manageAccount": "Konto verwalten",
+  "legal.title": "Zustimmung erforderlich",
+  "legal.pleaseRead": "Bitte lesen und akzeptieren Sie {{label}}, bevor Sie fortfahren.",
+  "legal.viewDocument": "{{label}} anzeigen",
+  "legal.nameLabel": "Vollständiger Name",
+  "legal.namePlaceholder": "Geben Sie Ihren vollständigen Namen ein",
+  "legal.dateLabel": "Datum",
+  "legal.checkboxLabel": "Ich habe {{label}} gelesen und stimme zu",
+  "legal.submitButton": "Zustimmen und fortfahren",
+  "error.notOnTheList": "Sie stehen nicht auf der Liste.",
+  "error.invalidState": "Ungültige Anfrage. Bitte versuchen Sie es erneut.",
+  "error.sessionExpired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+  "error.tosRequired": "Sie müssen {{label}} zustimmen, um fortzufahren."
+}

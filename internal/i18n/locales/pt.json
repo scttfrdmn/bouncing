@@ -1,0 +1,19 @@
+{
+  "signIn.title": "Entrar",
+  "signIn.continueWith": "Continuar com {{provider}}",
+  "signIn.orUsePasskey": "Ou entrar com uma chave de acesso",
+  "userButton.signOut": "Sair",
+  "userButton.manageAccount": "Gerenciar conta",
+  "legal.title": "Acordo necessário",
+  "legal.pleaseRead": "Por favor, leia e concorde com o {{label}} antes de continuar.",
+  "legal.viewDocument": "Ver {{label}}",
+  "legal.nameLabel": "Nome completo",
+  "legal.namePlaceholder": "Digite seu nome completo",
+  "legal.dateLabel": "Data",
+  "legal.checkboxLabel": "Li e concordo com o {{label}}",
+  "legal.submitButton": "Concordar e continuar",
+  "error.notOnTheList": "Você não está na lista.",
+  "error.invalidState": "Solicitação inválida. Por favor, tente novamente.",
+  "error.sessionExpired": "Sua sessão expirou. Por favor, faça login novamente.",
+  "error.tosRequired": "Você deve concordar com o {{label}} para continuar."
+}

@@ -1,0 +1,19 @@
+{
+  "signIn.title": "Sign in",
+  "signIn.continueWith": "Continue with {{provider}}",
+  "signIn.orUsePasskey": "Or sign in with a passkey",
+  "userButton.signOut": "Sign out",
+  "userButton.manageAccount": "Manage account",
+  "legal.title": "Agreement required",
+  "legal.pleaseRead": "Please read and agree to the {{label}} before continuing.",
+  "legal.viewDocument": "View {{label}}",
+  "legal.nameLabel": "Full name",
+  "legal.namePlaceholder": "Type your full name",
+  "legal.dateLabel": "Date",
+  "legal.checkboxLabel": "I have read and agree to the {{label}}",
+  "legal.submitButton": "Agree and continue",
+  "error.notOnTheList": "You're not on the list.",
+  "error.invalidState": "Invalid request. Please try again.",
+  "error.sessionExpired": "Your session has expired. Please sign in again.",
+  "error.tosRequired": "You must agree to the {{label}} to continue."
+}

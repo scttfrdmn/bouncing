@@ -1,0 +1,19 @@
+{
+  "signIn.title": "Iniciar sesión",
+  "signIn.continueWith": "Continuar con {{provider}}",
+  "signIn.orUsePasskey": "O iniciar sesión con una clave de acceso",
+  "userButton.signOut": "Cerrar sesión",
+  "userButton.manageAccount": "Gestionar cuenta",
+  "legal.title": "Acuerdo requerido",
+  "legal.pleaseRead": "Por favor, lee y acepta el {{label}} antes de continuar.",
+  "legal.viewDocument": "Ver {{label}}",
+  "legal.nameLabel": "Nombre completo",
+  "legal.namePlaceholder": "Escribe tu nombre completo",
+  "legal.dateLabel": "Fecha",
+  "legal.checkboxLabel": "He leído y acepto el {{label}}",
+  "legal.submitButton": "Aceptar y continuar",
+  "error.notOnTheList": "No estás en la lista.",
+  "error.invalidState": "Solicitud no válida. Por favor, inténtalo de nuevo.",
+  "error.sessionExpired": "Tu sesión ha expirado. Por favor, inicia sesión de nuevo.",
+  "error.tosRequired": "Debes aceptar el {{label}} para continuar."
+}

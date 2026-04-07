@@ -1,0 +1,54 @@
+name: Bug Report
+description: Report a bug in Bouncing
+labels: ["type/bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+  - type: input
+    id: version
+    attributes:
+      label: Bouncing version
+      placeholder: "v0.1.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Configure bouncing.yaml with ...
+        2. Run `bouncing serve`
+        3. Navigate to ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: bouncing.yaml (redact secrets)
+      render: yaml
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      render: text

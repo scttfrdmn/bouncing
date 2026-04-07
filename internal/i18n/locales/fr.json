@@ -1,0 +1,19 @@
+{
+  "signIn.title": "Se connecter",
+  "signIn.continueWith": "Continuer avec {{provider}}",
+  "signIn.orUsePasskey": "Ou se connecter avec une clé d'accès",
+  "userButton.signOut": "Se déconnecter",
+  "userButton.manageAccount": "Gérer le compte",
+  "legal.title": "Accord requis",
+  "legal.pleaseRead": "Veuillez lire et accepter le {{label}} avant de continuer.",
+  "legal.viewDocument": "Voir {{label}}",
+  "legal.nameLabel": "Nom complet",
+  "legal.namePlaceholder": "Saisissez votre nom complet",
+  "legal.dateLabel": "Date",
+  "legal.checkboxLabel": "J'ai lu et j'accepte le {{label}}",
+  "legal.submitButton": "Accepter et continuer",
+  "error.notOnTheList": "Vous n'êtes pas sur la liste.",
+  "error.invalidState": "Requête invalide. Veuillez réessayer.",
+  "error.sessionExpired": "Votre session a expiré. Veuillez vous reconnecter.",
+  "error.tosRequired": "Vous devez accepter le {{label}} pour continuer."
+}
