@@ -123,7 +123,7 @@ func TestPolicyDomainRestricted(t *testing.T) {
 		wantErr error
 	}{
 		{"scott@enso.co", nil},
-		{"SCOTT@ENSO.CO", nil},     // case-insensitive
+		{"SCOTT@ENSO.CO", nil}, // case-insensitive
 		{"maya@playgroundlogic.co", nil},
 		{"random@gmail.com", ErrDomainMismatch},
 		{"scott@sub.enso.co", ErrDomainMismatch}, // no subdomain

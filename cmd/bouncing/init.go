@@ -11,7 +11,7 @@ func runInit(_ []string) error {
 	if _, err := os.Stat("bouncing.yaml"); err == nil {
 		fmt.Print("bouncing.yaml already exists. Overwrite? [y/N]: ")
 		var yn string
-		fmt.Scanln(&yn)
+		_, _ = fmt.Scanln(&yn)
 		if strings.ToLower(yn) != "y" {
 			fmt.Println("aborted")
 			return nil

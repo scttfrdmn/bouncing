@@ -100,7 +100,7 @@ func fetchGoogle(client *http.Client) (*UserInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("google userinfo: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 
 	var v struct {
@@ -120,7 +120,7 @@ func fetchGitHub(client *http.Client) (*UserInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("github user: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 
 	var v struct {
@@ -160,7 +160,7 @@ func fetchGitHubPrimaryEmail(client *http.Client) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("github emails: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 
 	var emails []struct {
@@ -184,7 +184,7 @@ func fetchMicrosoft(client *http.Client) (*UserInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("microsoft graph: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 
 	var v struct {

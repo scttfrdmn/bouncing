@@ -104,7 +104,7 @@ type WebAuthnCredential struct {
 	ID         string
 	UserID     string
 	PublicKey  []byte
-	SignCount   uint32
+	SignCount  uint32
 	Transports []string
 	CreatedAt  int64
 	LastUsed   int64

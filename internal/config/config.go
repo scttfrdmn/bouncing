@@ -9,17 +9,17 @@ import (
 )
 
 type Config struct {
-	Listen    string          `yaml:"listen"`
-	BaseURL   string          `yaml:"base_url"`
-	Store     StoreConfig     `yaml:"store"`
-	Signing   SigningConfig   `yaml:"signing"`
-	Access    AccessConfig    `yaml:"access"`
-	Auth      AuthConfig      `yaml:"auth"`
-	Session   SessionConfig   `yaml:"session"`
-	RBAC      RBACConfig      `yaml:"rbac"`
-	Legal     *LegalConfig    `yaml:"legal,omitempty"`
-	I18n      I18nConfig      `yaml:"i18n"`
-	Webhooks  []WebhookConfig `yaml:"webhooks"`
+	Listen    string           `yaml:"listen"`
+	BaseURL   string           `yaml:"base_url"`
+	Store     StoreConfig      `yaml:"store"`
+	Signing   SigningConfig    `yaml:"signing"`
+	Access    AccessConfig     `yaml:"access"`
+	Auth      AuthConfig       `yaml:"auth"`
+	Session   SessionConfig    `yaml:"session"`
+	RBAC      RBACConfig       `yaml:"rbac"`
+	Legal     *LegalConfig     `yaml:"legal,omitempty"`
+	I18n      I18nConfig       `yaml:"i18n"`
+	Webhooks  []WebhookConfig  `yaml:"webhooks"`
 	Directory *DirectoryConfig `yaml:"directory,omitempty"`
 }
 
@@ -35,16 +35,16 @@ type SigningConfig struct {
 }
 
 type AccessConfig struct {
-	Mode           string   `yaml:"mode"`             // "open" | "domain-restricted" | "invite-only"
+	Mode           string   `yaml:"mode"` // "open" | "domain-restricted" | "invite-only"
 	AllowedDomains []string `yaml:"allowed_domains,omitempty"`
 }
 
 type AuthConfig struct {
 	Methods     AuthMethodsConfig `yaml:"methods"`
-	RedirectURL string            `yaml:"redirect_url"`  // where to send users after login
-	ErrorURL    string            `yaml:"error_url"`     // where to send users on auth failure
-	LogoutURL   string            `yaml:"logout_url"`    // where to redirect after logout
-	CORSOrigins []string          `yaml:"cors_origins"`  // allowed CORS origins (empty = all)
+	RedirectURL string            `yaml:"redirect_url"` // where to send users after login
+	ErrorURL    string            `yaml:"error_url"`    // where to send users on auth failure
+	LogoutURL   string            `yaml:"logout_url"`   // where to redirect after logout
+	CORSOrigins []string          `yaml:"cors_origins"` // allowed CORS origins (empty = all)
 }
 
 type AuthMethodsConfig struct {
@@ -110,7 +110,7 @@ func Load(path string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("config: open %s: %w", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var cfg Config
 	if err := yaml.NewDecoder(f).Decode(&cfg); err != nil {

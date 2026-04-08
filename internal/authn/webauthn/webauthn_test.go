@@ -21,9 +21,8 @@ func TestSessionStoreSaveLoad(t *testing.T) {
 
 	got := s.Load("user-1")
 	if got == nil {
-		t.Fatal("Load returned nil for existing entry")
-	}
-	if got.Challenge != "abc123" {
+		t.Error("Load returned nil for existing entry")
+	} else if got.Challenge != "abc123" {
 		t.Errorf("Challenge: got %q, want %q", got.Challenge, "abc123")
 	}
 
@@ -74,9 +73,8 @@ func TestSessionStoreOverwrite(t *testing.T) {
 
 	got := s.Load("user-2")
 	if got == nil {
-		t.Fatal("Load returned nil")
-	}
-	if got.Challenge != "second" {
+		t.Error("Load returned nil")
+	} else if got.Challenge != "second" {
 		t.Errorf("expected second save to overwrite first, got %q", got.Challenge)
 	}
 }

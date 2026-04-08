@@ -2,8 +2,8 @@ package store
 
 import (
 	"context"
-	"errors"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 )
@@ -17,7 +17,7 @@ func newTestStore(t *testing.T) *SQLiteStore {
 	if err := s.Migrate(context.Background()); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { _ = s.Close() })
 	return s
 }
 
@@ -118,7 +118,7 @@ func TestListUsersPerPageClamp(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
 	for i := 0; i < 5; i++ {
-		s.CreateUser(ctx, &User{Email: "u" + string(rune('0'+i)) + "@x.co", Status: "active"})
+		_ = s.CreateUser(ctx, &User{Email: "u" + string(rune('0'+i)) + "@x.co", Status: "active"})
 	}
 	users, err := s.ListUsers(ctx, ListOpts{PerPage: 200})
 	if err != nil {
@@ -136,7 +136,7 @@ func TestDeleteUser(t *testing.T) {
 	ctx := context.Background()
 
 	u := &User{Email: "del@enso.co", Status: "active"}
-	s.CreateUser(ctx, u)
+	_ = s.CreateUser(ctx, u)
 
 	if err := s.DeleteUser(ctx, u.ID); err != nil {
 		t.Fatalf("DeleteUser: %v", err)
@@ -153,8 +153,8 @@ func TestDeleteUserPreservesTOSAcceptances(t *testing.T) {
 	ctx := context.Background()
 
 	u := &User{Email: "tos@enso.co", Status: "active"}
-	s.CreateUser(ctx, u)
-	s.CreateTOSAcceptance(ctx, &TOSAcceptance{
+	_ = s.CreateUser(ctx, u)
+	_ = s.CreateTOSAcceptance(ctx, &TOSAcceptance{
 		UserID: u.ID, Version: "v1.0", NameTyped: "Scott Freeman",
 	})
 
@@ -180,7 +180,7 @@ func TestWebAuthnCredentialRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	u := &User{Email: "wn@enso.co", Status: "active"}
-	s.CreateUser(ctx, u)
+	_ = s.CreateUser(ctx, u)
 
 	cred := &WebAuthnCredential{
 		UserID:     u.ID,
@@ -237,9 +237,9 @@ func TestAssignRevokeRole(t *testing.T) {
 	ctx := context.Background()
 
 	u := &User{Email: "role@enso.co", Status: "active"}
-	s.CreateUser(ctx, u)
+	_ = s.CreateUser(ctx, u)
 	r := &Role{Name: "admin", Permissions: []string{"*"}}
-	s.CreateRole(ctx, r)
+	_ = s.CreateRole(ctx, r)
 
 	if err := s.AssignRole(ctx, u.ID, r.ID, nil); err != nil {
 		t.Fatalf("AssignRole: %v", err)
@@ -269,11 +269,11 @@ func TestAssignRoleWithOrgID(t *testing.T) {
 	ctx := context.Background()
 
 	u := &User{Email: "org@enso.co", Status: "active"}
-	s.CreateUser(ctx, u)
+	_ = s.CreateUser(ctx, u)
 	r := &Role{Name: "member", Permissions: []string{"read"}}
-	s.CreateRole(ctx, r)
+	_ = s.CreateRole(ctx, r)
 	org := &Org{Name: "Acme", Slug: "acme"}
-	s.CreateOrg(ctx, org)
+	_ = s.CreateOrg(ctx, org)
 
 	if err := s.AssignRole(ctx, u.ID, r.ID, &org.ID); err != nil {
 		t.Fatalf("AssignRole with org: %v", err)
@@ -293,7 +293,7 @@ func TestRefreshTokenRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	u := &User{Email: "rt@enso.co", Status: "active"}
-	s.CreateUser(ctx, u)
+	_ = s.CreateUser(ctx, u)
 
 	tok := &RefreshToken{
 		UserID:    u.ID,
@@ -328,10 +328,10 @@ func TestDeleteUserRefreshTokens(t *testing.T) {
 	ctx := context.Background()
 
 	u := &User{Email: "multi@enso.co", Status: "active"}
-	s.CreateUser(ctx, u)
+	_ = s.CreateUser(ctx, u)
 
 	for _, h := range []string{"hash1", "hash2", "hash3"} {
-		s.CreateRefreshToken(ctx, &RefreshToken{
+		_ = s.CreateRefreshToken(ctx, &RefreshToken{
 			UserID:    u.ID,
 			TokenHash: h,
 			ExpiresAt: time.Now().Add(time.Hour).Unix(),
@@ -358,16 +358,16 @@ func TestIsAllowedDomain(t *testing.T) {
 	ctx := context.Background()
 
 	// Insert domain via raw SQL (no public method to add domains in v0.1).
-	s.db.ExecContext(ctx, `INSERT INTO allowed_domains (domain) VALUES ('enso.co')`)
+	_, _ = s.db.ExecContext(ctx, `INSERT INTO allowed_domains (domain) VALUES ('enso.co')`)
 
 	tests := []struct {
 		domain string
 		want   bool
 	}{
 		{"enso.co", true},
-		{"ENSO.CO", true},          // case-insensitive
-		{"@enso.co", true},         // @ prefix stripped
-		{"sub.enso.co", false},     // no subdomain match
+		{"ENSO.CO", true},      // case-insensitive
+		{"@enso.co", true},     // @ prefix stripped
+		{"sub.enso.co", false}, // no subdomain match
 		{"gmail.com", false},
 	}
 	for _, tt := range tests {
@@ -391,7 +391,7 @@ func TestTOSAcceptanceRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	u := &User{Email: "tos2@enso.co", Status: "active"}
-	s.CreateUser(ctx, u)
+	_ = s.CreateUser(ctx, u)
 
 	a := &TOSAcceptance{
 		UserID:    u.ID,

@@ -103,7 +103,7 @@ func (d *Dispatcher) send(ctx context.Context, wh config.WebhookConfig, event st
 			d.log.Warn("hooks: send failed", "url", wh.URL, "attempt", attempt+1, "err", err)
 			continue
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return

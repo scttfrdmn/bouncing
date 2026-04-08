@@ -27,7 +27,7 @@ func runUsers(args []string) error {
 	if err != nil {
 		return fmt.Errorf("open store: %w", err)
 	}
-	defer st.Close()
+	defer func() { _ = st.Close() }()
 
 	if err := st.Migrate(context.Background()); err != nil {
 		return fmt.Errorf("migrate: %w", err)
@@ -109,9 +109,9 @@ func usersList(st store.Store, args []string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tEMAIL\tNAME\tSTATUS")
+	_, _ = fmt.Fprintln(w, "ID\tEMAIL\tNAME\tSTATUS")
 	for _, u := range users {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", u.ID, u.Email, u.Name, u.Status)
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", u.ID, u.Email, u.Name, u.Status)
 	}
 	return w.Flush()
 }
@@ -125,7 +125,7 @@ func usersImport(st store.Store, args []string) error {
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	r := csv.NewReader(f)
 	records, err := r.ReadAll()

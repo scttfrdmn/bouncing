@@ -309,4 +309,3 @@ func setAuthCookies(w http.ResponseWriter, accessToken, refreshToken string, sec
 		SameSite: http.SameSiteLaxMode,
 	})
 }
-

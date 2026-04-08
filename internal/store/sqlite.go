@@ -35,7 +35,7 @@ func NewSQLite(path string) (*SQLiteStore, error) {
 		"PRAGMA foreign_keys = ON",
 	} {
 		if _, err := db.Exec(pragma); err != nil {
-			db.Close()
+			_ = db.Close()
 			return nil, fmt.Errorf("store.NewSQLite: %s: %w", pragma, err)
 		}
 	}
@@ -116,7 +116,7 @@ func (s *SQLiteStore) ListUsers(ctx context.Context, opts ListOpts) ([]*User, er
 	if err != nil {
 		return nil, fmt.Errorf("store.ListUsers: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var users []*User
 	for rows.Next() {
@@ -174,7 +174,7 @@ func (s *SQLiteStore) DeleteUser(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("store.DeleteUser: begin: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, stmt := range []string{
 		"DELETE FROM refresh_tokens WHERE user_id = ?",
@@ -240,7 +240,7 @@ func (s *SQLiteStore) ListOAuthConnections(ctx context.Context, userID string) (
 	if err != nil {
 		return nil, fmt.Errorf("store.ListOAuthConnections: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var conns []*OAuthConnection
 	for rows.Next() {
 		c := &OAuthConnection{}
@@ -283,7 +283,7 @@ func (s *SQLiteStore) GetWebAuthnCredentials(ctx context.Context, userID string)
 	if err != nil {
 		return nil, fmt.Errorf("store.GetWebAuthnCredentials: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var creds []*WebAuthnCredential
 	for rows.Next() {
@@ -366,7 +366,7 @@ func (s *SQLiteStore) ListRoles(ctx context.Context) ([]*Role, error) {
 	if err != nil {
 		return nil, fmt.Errorf("store.ListRoles: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var roles []*Role
 	for rows.Next() {
 		r := &Role{}
@@ -434,7 +434,7 @@ func (s *SQLiteStore) GetUserRoles(ctx context.Context, userID string) ([]*UserR
 	if err != nil {
 		return nil, fmt.Errorf("store.GetUserRoles: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var userRoles []*UserRole
 	for rows.Next() {
 		ur := &UserRole{}
@@ -483,7 +483,7 @@ func (s *SQLiteStore) ListOrgs(ctx context.Context) ([]*Org, error) {
 	if err != nil {
 		return nil, fmt.Errorf("store.ListOrgs: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var orgs []*Org
 	for rows.Next() {
 		o := &Org{}
@@ -571,7 +571,7 @@ func (s *SQLiteStore) ListAllowedDomains(ctx context.Context) ([]string, error) 
 	if err != nil {
 		return nil, fmt.Errorf("store.ListAllowedDomains: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var domains []string
 	for rows.Next() {
 		var d string
@@ -603,7 +603,7 @@ func (s *SQLiteStore) ListWebhooks(ctx context.Context) ([]*Webhook, error) {
 	if err != nil {
 		return nil, fmt.Errorf("store.ListWebhooks: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var hooks []*Webhook
 	for rows.Next() {
 		w := &Webhook{}
@@ -685,7 +685,7 @@ func (s *SQLiteStore) ListTOSAcceptances(ctx context.Context, userID string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("store.ListTOSAcceptances: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var acceptances []*TOSAcceptance
 	for rows.Next() {
 		a := &TOSAcceptance{}

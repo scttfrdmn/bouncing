@@ -176,19 +176,6 @@ func TestVerifyWrongKey(t *testing.T) {
 
 // ── Refresh token: Issue + Rotate ────────────────────────────────────────────
 
-func newTestRefreshManager(t *testing.T) *RefreshManager {
-	t.Helper()
-	db, err := store.NewSQLite(":memory:")
-	if err != nil {
-		t.Fatalf("NewSQLite: %v", err)
-	}
-	t.Cleanup(func() { db.Close() })
-	if err := db.Migrate(context.Background()); err != nil {
-		t.Fatalf("Migrate: %v", err)
-	}
-	return NewRefreshManager(db, 7*24*time.Hour)
-}
-
 func mustCreateUser(t *testing.T, ctx context.Context, db interface {
 	CreateUser(context.Context, *store.User) error
 }, id string) {
@@ -206,7 +193,7 @@ func TestRefreshIssueRotate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLite: %v", err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	if err := db.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
@@ -245,7 +232,7 @@ func TestRefreshReplayDetection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLite: %v", err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	if err := db.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
@@ -279,7 +266,7 @@ func TestRefreshExpired(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLite: %v", err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	if err := db.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
@@ -306,7 +293,7 @@ func TestRefreshRevoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLite: %v", err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	if err := db.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
@@ -336,7 +323,7 @@ func TestRefreshRevokeAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLite: %v", err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	if err := db.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}

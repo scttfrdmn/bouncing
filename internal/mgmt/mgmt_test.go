@@ -35,7 +35,7 @@ func newTestHandler(t *testing.T) (*Handler, store.Store) {
 	if err != nil {
 		t.Fatalf("NewSQLite: %v", err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}

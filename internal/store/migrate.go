@@ -71,6 +71,6 @@ func migrate(ctx context.Context, db *sql.DB) error {
 
 func migrationVersion(filename string) int {
 	var v int
-	fmt.Sscanf(filename, "%d_", &v)
+	_, _ = fmt.Sscanf(filename, "%d_", &v)
 	return v
 }

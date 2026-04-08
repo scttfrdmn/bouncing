@@ -26,8 +26,8 @@ func TestLocale(t *testing.T) {
 		{"ja", "ja"},
 		{"zh-Hans-CN", "zh-Hans"},
 		{"pt-BR", "pt"},
-		{"ar", "en"},        // unsupported → fallback
-		{"zh-TW", "en"},     // unsupported subtag → fallback
+		{"ar", "en"},    // unsupported → fallback
+		{"zh-TW", "en"}, // unsupported subtag → fallback
 		{"fr;q=0.9,de;q=0.8", "fr"},
 		{"de;q=0.8,fr;q=0.9", "fr"}, // q ordering
 		{"", "en"},

@@ -33,7 +33,7 @@ func runServe(args []string) error {
 	if err != nil {
 		return fmt.Errorf("open store: %w", err)
 	}
-	defer st.Close()
+	defer func() { _ = st.Close() }()
 
 	if err := st.Migrate(context.Background()); err != nil {
 		return fmt.Errorf("migrate: %w", err)
