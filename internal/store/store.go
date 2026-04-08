@@ -2,8 +2,15 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+// ErrNotFound is returned by store methods when the requested record does not exist.
+var ErrNotFound = errors.New("store: not found")
+
+// IsNotFound reports whether err wraps ErrNotFound.
+func IsNotFound(err error) bool { return errors.Is(err, ErrNotFound) }
 
 // Store is the central storage interface. Every backend (SQLite, Turso) implements this.
 type Store interface {

@@ -746,10 +746,3 @@ func orgIDToPtr(s string) *string {
 	return &s
 }
 
-// ErrNotFound is returned by store methods when the requested record does not exist.
-var ErrNotFound = errors.New("not found")
-
-// IsNotFound returns true if err wraps ErrNotFound.
-func IsNotFound(err error) bool {
-	return errors.Is(err, ErrNotFound)
-}

@@ -191,6 +191,56 @@ github.com/scttfrdmn/bouncing/
         └── security.yml             // govulncheck weekly
 ```
 
+## Open-Core / Managed Boundary
+
+### What `internal/` means in Go
+
+Go's `internal/` convention means **"not a public library API"** — it does NOT mean proprietary or hidden. All code under `internal/` is Apache 2.0 open-source and committed to this public repo. External Go modules simply cannot import from `internal/` (the Go toolchain enforces this).
+
+### What `pkg/` means
+
+`pkg/` is the **stable public API surface** for external consumers. Every type in `pkg/` is a type alias of its `internal/` counterpart — they are completely identical types, requiring no conversions.
+
+| Package | Contents |
+|---------|----------|
+| `pkg/store/` | `Store` interface + all model types (`User`, `Role`, `Org`, …), `ErrNotFound` |
+| `pkg/config/` | `Config` + all sub-types, `Load()` |
+| `pkg/server/` | `New(cfg, store.Store, log)` → `*Server` |
+
+### The `bouncing-managed` repo pattern
+
+The private managed offering (`scttfrdmn/bouncing-managed`) imports from `pkg/` to build a binary that adds Turso and billing:
+
+```
+bouncing-managed/
+├── go.mod                       # module github.com/scttfrdmn/bouncing-managed
+│                                # require github.com/scttfrdmn/bouncing vX.Y.Z
+├── internal/store/
+│   └── turso.go                 # implements pkg/store.Store via go-libsql
+└── cmd/bouncing/
+    └── main.go                  # imports pkg/server + pkg/config, wires TursoStore
+```
+
+The managed `main.go` is the only Go difference from open-core — it passes a `TursoStore` instead of an `SQLiteStore` to `pkg/server.New()`.
+
+### What stays in each repo
+
+| This repo (open-source, Apache 2.0) | bouncing-managed (private) |
+|-------------------------------------|---------------------------|
+| All auth logic | Turso storage driver |
+| SQLite backend | Billing / subscription hooks |
+| `@bouncing/next` SDK | Hetzner / Fly.io infra (Terraform, k8s) |
+| CLI (`bouncing serve`, etc.) | The bounc.ing website |
+| `pkg/` public API | Multi-region deployment configs |
+
+### Local cross-repo development
+
+`managed/` is listed in `.gitignore`. To develop against both repos simultaneously:
+
+```bash
+ln -s /path/to/bouncing-managed managed/
+```
+
 ## Store Interface
 
 This is the central contract. Every storage backend (SQLite, Turso) implements this interface.
