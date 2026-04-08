@@ -24,9 +24,10 @@ type Config struct {
 }
 
 type StoreConfig struct {
-	Driver string `yaml:"driver"` // "sqlite" | "turso"
-	Path   string `yaml:"path"`
-	URL    string `yaml:"url,omitempty"` // for turso
+	Driver    string `yaml:"driver"`               // "sqlite" | "turso"
+	Path      string `yaml:"path"`                 // SQLite file path
+	URL       string `yaml:"url,omitempty"`        // Turso: libsql://...
+	AuthToken string `yaml:"auth_token,omitempty"` // Turso auth token
 }
 
 type SigningConfig struct {
@@ -97,7 +98,8 @@ type WebhookConfig struct {
 type DirectoryConfig struct {
 	Provider        string            `yaml:"provider"`
 	Domain          string            `yaml:"domain"`
-	ServiceAccount  string            `yaml:"service_account"`
+	ServiceAccount  string            `yaml:"service_account"`  // path to service account JSON key file
+	AdminEmail      string            `yaml:"admin_email"`       // impersonated admin for domain-wide delegation
 	SyncInterval    time.Duration     `yaml:"sync_interval"`
 	AutoDeprovision bool              `yaml:"auto_deprovision"`
 	DefaultRole     string            `yaml:"default_role"`

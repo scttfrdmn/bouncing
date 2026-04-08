@@ -29,6 +29,9 @@ func runServe(args []string) error {
 	logHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
 	log := slog.New(logHandler)
 
+	if cfg.Store.Driver != "" && cfg.Store.Driver != "sqlite" {
+		return fmt.Errorf("store driver %q is not supported in this build (open-core supports sqlite only)", cfg.Store.Driver)
+	}
 	st, err := store.NewSQLite(cfg.Store.Path)
 	if err != nil {
 		return fmt.Errorf("open store: %w", err)

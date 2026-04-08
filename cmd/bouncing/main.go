@@ -26,6 +26,8 @@ func main() {
 		err = runInit(os.Args[2:])
 	case "users":
 		err = runUsers(os.Args[2:])
+	case "directory":
+		err = runDirectory(os.Args[2:])
 	case "version":
 		fmt.Printf("bouncing %s (%s) built %s go%s\n", version, commit, date, runtime.Version())
 		return
@@ -54,5 +56,6 @@ Usage:
   bouncing users remove <id>     Remove a user
   bouncing users list            List all users
   bouncing users import <file>   Bulk import from CSV
+  bouncing directory sync        Sync users from directory provider
   bouncing version               Print version information`)
 }

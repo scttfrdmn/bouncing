@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -66,8 +65,8 @@ func TestGetUserByEmailNotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	_, err := s.GetUserByEmail(context.Background(), "nobody@example.com")
-	if !errors.Is(err, sql.ErrNoRows) {
-		t.Errorf("expected sql.ErrNoRows, got %v", err)
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
 	}
 }
 
@@ -142,7 +141,7 @@ func TestDeleteUser(t *testing.T) {
 		t.Fatalf("DeleteUser: %v", err)
 	}
 	_, err := s.GetUser(ctx, u.ID)
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("expected not found after delete, got %v", err)
 	}
 }
@@ -317,7 +316,7 @@ func TestRefreshTokenRoundTrip(t *testing.T) {
 	}
 
 	_, err = s.GetRefreshToken(ctx, "abc123hash")
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("expected not found after delete, got %v", err)
 	}
 }
@@ -344,7 +343,7 @@ func TestDeleteUserRefreshTokens(t *testing.T) {
 
 	for _, h := range []string{"hash1", "hash2", "hash3"} {
 		_, err := s.GetRefreshToken(ctx, h)
-		if !errors.Is(err, sql.ErrNoRows) {
+		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("hash %s: expected not found, got %v", h, err)
 		}
 	}
@@ -413,8 +412,8 @@ func TestTOSAcceptanceRoundTrip(t *testing.T) {
 
 	// Version not found.
 	_, err = s.GetTOSAcceptance(ctx, u.ID, "v2.0")
-	if !errors.Is(err, sql.ErrNoRows) {
-		t.Errorf("v2.0 not found: expected sql.ErrNoRows, got %v", err)
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("v2.0 not found: expected ErrNotFound, got %v", err)
 	}
 }
 

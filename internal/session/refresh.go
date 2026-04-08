@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -59,7 +58,7 @@ func (m *RefreshManager) Rotate(ctx context.Context, rawToken string) (newToken,
 
 	t, err := m.store.GetRefreshToken(ctx, hash)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, store.ErrNotFound) {
 			// Token not found — potential replay. We don't know the userID here,
 			// so we can't revoke the family. Return ErrTokenReplayed; caller
 			// should treat this session as fully invalidated.
@@ -91,7 +90,7 @@ func (m *RefreshManager) Revoke(ctx context.Context, rawToken string) error {
 	hash := hashToken(rawToken)
 	t, err := m.store.GetRefreshToken(ctx, hash)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, store.ErrNotFound) {
 			return nil // already gone
 		}
 		return fmt.Errorf("session.Revoke: %w", err)

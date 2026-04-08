@@ -2,7 +2,6 @@ package mgmt
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -219,7 +218,7 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := h.store.GetUser(ctx, id); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, store.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "not_found", "user not found")
 			return
 		}
@@ -260,7 +259,7 @@ func (h *Handler) AssignRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.assignRoleByName(ctx, userID, req.Role, req.OrgID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, store.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "not_found", "role not found")
 			return
 		}

@@ -13,6 +13,13 @@ import (
 	_ "modernc.org/sqlite" // register "sqlite" driver
 )
 
+func mapNoRows(err error, op string) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("%s: %w", op, ErrNotFound)
+	}
+	return fmt.Errorf("%s: %w", op, err)
+}
+
 // SQLiteStore implements Store against a local SQLite database.
 type SQLiteStore struct {
 	db *sql.DB
@@ -78,7 +85,7 @@ func (s *SQLiteStore) GetUser(ctx context.Context, id string) (*User, error) {
 		FROM users WHERE id = ?`, id,
 	).Scan(&u.ID, &u.Email, &u.Name, &u.AvatarURL, &u.Status, &u.AuthMethod, &u.CreatedAt, &u.LastLogin)
 	if err != nil {
-		return nil, fmt.Errorf("store.GetUser: %w", err)
+		return nil, mapNoRows(err, "store.GetUser")
 	}
 	return u, nil
 }
@@ -90,7 +97,7 @@ func (s *SQLiteStore) GetUserByEmail(ctx context.Context, email string) (*User, 
 		FROM users WHERE email = ?`, email,
 	).Scan(&u.ID, &u.Email, &u.Name, &u.AvatarURL, &u.Status, &u.AuthMethod, &u.CreatedAt, &u.LastLogin)
 	if err != nil {
-		return nil, fmt.Errorf("store.GetUserByEmail: %w", err)
+		return nil, mapNoRows(err, "store.GetUserByEmail")
 	}
 	return u, nil
 }
@@ -228,7 +235,7 @@ func (s *SQLiteStore) GetOAuthConnection(ctx context.Context, provider, provider
 		FROM oauth_connections WHERE provider=? AND provider_id=?`, provider, providerID,
 	).Scan(&c.ID, &c.UserID, &c.Provider, &c.ProviderID, &c.Email)
 	if err != nil {
-		return nil, fmt.Errorf("store.GetOAuthConnection: %w", err)
+		return nil, mapNoRows(err, "store.GetOAuthConnection")
 	}
 	return c, nil
 }
@@ -351,7 +358,7 @@ func (s *SQLiteStore) scanRole(row *sql.Row) (*Role, error) {
 	r := &Role{}
 	var perms string
 	if err := row.Scan(&r.ID, &r.Name, &perms); err != nil {
-		return nil, fmt.Errorf("store.scanRole: %w", err)
+		return nil, mapNoRows(err, "store.scanRole")
 	}
 	var err error
 	r.Permissions, err = unmarshalStrings(perms)
@@ -543,7 +550,7 @@ func (s *SQLiteStore) GetRefreshToken(ctx context.Context, tokenHash string) (*R
 		FROM refresh_tokens WHERE token_hash=?`, tokenHash,
 	).Scan(&t.ID, &t.UserID, &t.TokenHash, &t.ExpiresAt, &t.CreatedAt)
 	if err != nil {
-		return nil, fmt.Errorf("store.GetRefreshToken: %w", err)
+		return nil, mapNoRows(err, "store.GetRefreshToken")
 	}
 	return t, nil
 }
@@ -673,7 +680,7 @@ func (s *SQLiteStore) GetTOSAcceptance(ctx context.Context, userID, version stri
 		FROM tos_acceptances WHERE user_id=? AND version=?`, userID, version,
 	).Scan(&a.ID, &a.UserID, &a.Version, &a.NameTyped, &a.AcceptedAt, &a.IPAddress)
 	if err != nil {
-		return nil, fmt.Errorf("store.GetTOSAcceptance: %w", err)
+		return nil, mapNoRows(err, "store.GetTOSAcceptance")
 	}
 	return a, nil
 }
@@ -742,7 +749,7 @@ func orgIDToPtr(s string) *string {
 // ErrNotFound is returned by store methods when the requested record does not exist.
 var ErrNotFound = errors.New("not found")
 
-// IsNotFound returns true if err wraps sql.ErrNoRows.
+// IsNotFound returns true if err wraps ErrNotFound.
 func IsNotFound(err error) bool {
-	return errors.Is(err, sql.ErrNoRows)
+	return errors.Is(err, ErrNotFound)
 }
