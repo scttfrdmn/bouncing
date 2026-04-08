@@ -125,6 +125,11 @@ func (h *Handler) CallbackOAuth(w http.ResponseWriter, r *http.Request) {
 		if err := h.store.UpdateUser(ctx, u); err != nil {
 			h.log.Warn("oauth callback: update last_login", "err", err)
 		}
+		h.hooks.Dispatch(ctx, "user.login", map[string]any{
+			"user_id": u.ID,
+			"email":   u.Email,
+			"method":  "oauth:" + h.provider.Name,
+		})
 		h.finishLogin(w, r, u, false)
 		return
 	}

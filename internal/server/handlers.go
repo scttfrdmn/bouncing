@@ -141,6 +141,17 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleProviders returns the list of configured OAuth provider names.
+// GET /auth/providers
+func (s *Server) handleProviders(w http.ResponseWriter, r *http.Request) {
+	names := make([]string, 0, len(s.oauthHandlers))
+	for _, h := range s.oauthHandlers {
+		names = append(names, h.ProviderName())
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"providers": names})
+}
+
 // resolveRolesPerms loads role names and merged permissions for a user.
 func (s *Server) resolveRolesPerms(ctx context.Context, userID string) ([]string, []string) {
 	userRoles, _ := s.store.GetUserRoles(ctx, userID)

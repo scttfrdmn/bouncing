@@ -450,3 +450,63 @@ func TestWebhookRoundTrip(t *testing.T) {
 		t.Errorf("expected 0 webhooks after delete, got %d", len(hooks))
 	}
 }
+
+// ── Orgs ──────────────────────────────────────────────────────────────────────
+
+func TestOrgCRUD(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	o := &Org{Name: "Acme Corp", Slug: "acme"}
+	if err := s.CreateOrg(ctx, o); err != nil {
+		t.Fatalf("CreateOrg: %v", err)
+	}
+	if o.ID == "" {
+		t.Fatal("expected org ID to be set")
+	}
+
+	got, err := s.GetOrg(ctx, o.ID)
+	if err != nil {
+		t.Fatalf("GetOrg: %v", err)
+	}
+	if got.Name != "Acme Corp" || got.Slug != "acme" {
+		t.Errorf("GetOrg: got %+v", got)
+	}
+
+	all, err := s.ListOrgs(ctx)
+	if err != nil {
+		t.Fatalf("ListOrgs: %v", err)
+	}
+	if len(all) < 1 {
+		t.Error("expected at least 1 org")
+	}
+}
+
+func TestOrgMembershipRoundTrip(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	u := &User{Email: "member@example.com", Status: "active"}
+	_ = s.CreateUser(ctx, u)
+
+	role := &Role{Name: "viewer", Permissions: []string{"read"}}
+	_ = s.CreateRole(ctx, role)
+
+	o := &Org{Name: "TestOrg", Slug: "testorg"}
+	_ = s.CreateOrg(ctx, o)
+
+	if err := s.AddOrgMember(ctx, o.ID, u.ID, role.ID); err != nil {
+		t.Fatalf("AddOrgMember: %v", err)
+	}
+
+	// Idempotent add.
+	if err := s.AddOrgMember(ctx, o.ID, u.ID, role.ID); err != nil {
+		t.Errorf("duplicate AddOrgMember should be ignored: %v", err)
+	}
+
+	if err := s.RemoveOrgMember(ctx, o.ID, u.ID); err != nil {
+		t.Fatalf("RemoveOrgMember: %v", err)
+	}
+}

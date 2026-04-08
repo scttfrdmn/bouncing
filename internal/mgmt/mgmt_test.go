@@ -305,3 +305,143 @@ func TestListAgreements(t *testing.T) {
 		t.Errorf("expected 1 agreement, got %d", len(agreements))
 	}
 }
+
+// ── Org CRUD ──────────────────────────────────────────────────────────────────
+
+func TestCreateListOrgs(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler(t)
+
+	// Create org.
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "/manage/orgs",
+		jsonBody(map[string]any{"name": "Acme Corp", "slug": "acme"}))
+	r.Header.Set("Content-Type", "application/json")
+	h.CreateOrg(w, r)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("CreateOrg status: got %d; body: %s", w.Code, w.Body.String())
+	}
+	var orgResp map[string]any
+	_ = json.NewDecoder(w.Body).Decode(&orgResp)
+	if orgResp["ID"] == nil && orgResp["id"] == nil {
+		t.Error("id missing from org response")
+	}
+
+	// List orgs.
+	w2 := httptest.NewRecorder()
+	r2 := httptest.NewRequest("GET", "/manage/orgs", nil)
+	h.ListOrgs(w2, r2)
+
+	if w2.Code != http.StatusOK {
+		t.Errorf("ListOrgs status: got %d", w2.Code)
+	}
+	var listResp map[string]any
+	_ = json.NewDecoder(w2.Body).Decode(&listResp)
+	orgs := listResp["orgs"].([]any)
+	if len(orgs) < 1 {
+		t.Error("expected at least 1 org")
+	}
+}
+
+func TestAddRemoveOrgMember(t *testing.T) {
+	t.Parallel()
+	h, db := newTestHandler(t)
+	ctx := context.Background()
+
+	// Create org.
+	wOrg := httptest.NewRecorder()
+	rOrg := httptest.NewRequest("POST", "/manage/orgs",
+		jsonBody(map[string]any{"name": "Org1", "slug": "org1"}))
+	rOrg.Header.Set("Content-Type", "application/json")
+	h.CreateOrg(wOrg, rOrg)
+	var orgResp map[string]any
+	_ = json.NewDecoder(wOrg.Body).Decode(&orgResp)
+	orgID, _ := orgResp["ID"].(string)
+	if orgID == "" {
+		// store.Org has no json tags so fields are capitalized
+		t.Fatalf("org id missing; got %v", orgResp)
+	}
+
+	// Create user + role.
+	u := &store.User{Email: "member@example.com", Status: "active"}
+	_ = db.CreateUser(ctx, u)
+	role := &store.Role{Name: "viewer", Permissions: []string{"read"}}
+	_ = db.CreateRole(ctx, role)
+
+	// Add member.
+	wAdd := httptest.NewRecorder()
+	rAdd := httptest.NewRequest("POST", "/manage/orgs/"+orgID+"/members",
+		jsonBody(map[string]any{"user_id": u.ID, "role": "viewer"}))
+	rAdd.Header.Set("Content-Type", "application/json")
+	rAdd.SetPathValue("org_id", orgID)
+	h.AddOrgMember(wAdd, rAdd)
+
+	if wAdd.Code != http.StatusOK {
+		t.Fatalf("AddOrgMember status: got %d; body: %s", wAdd.Code, wAdd.Body.String())
+	}
+
+	// Remove member.
+	wRem := httptest.NewRecorder()
+	rRem := httptest.NewRequest("DELETE", "/manage/orgs/"+orgID+"/members/"+u.ID, nil)
+	rRem.SetPathValue("org_id", orgID)
+	rRem.SetPathValue("uid", u.ID)
+	h.RemoveOrgMember(wRem, rRem)
+
+	if wRem.Code != http.StatusOK {
+		t.Errorf("RemoveOrgMember status: got %d", wRem.Code)
+	}
+}
+
+// ── Webhook CRUD ──────────────────────────────────────────────────────────────
+
+func TestCreateListDeleteWebhook(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler(t)
+
+	// Create.
+	wCreate := httptest.NewRecorder()
+	rCreate := httptest.NewRequest("POST", "/manage/webhooks",
+		jsonBody(map[string]any{
+			"url":    "https://example.com/hook",
+			"events": []string{"user.created"},
+			"secret": "whsec_test",
+		}))
+	rCreate.Header.Set("Content-Type", "application/json")
+	h.CreateWebhook(wCreate, rCreate)
+
+	if wCreate.Code != http.StatusCreated {
+		t.Fatalf("CreateWebhook status: got %d; body: %s", wCreate.Code, wCreate.Body.String())
+	}
+	var created map[string]any
+	_ = json.NewDecoder(wCreate.Body).Decode(&created)
+	whID, _ := created["ID"].(string)
+	if whID == "" {
+		t.Fatalf("webhook ID missing; got %v", created)
+	}
+
+	// List.
+	wList := httptest.NewRecorder()
+	rList := httptest.NewRequest("GET", "/manage/webhooks", nil)
+	h.ListWebhooks(wList, rList)
+
+	if wList.Code != http.StatusOK {
+		t.Errorf("ListWebhooks status: got %d", wList.Code)
+	}
+	var listed map[string]any
+	_ = json.NewDecoder(wList.Body).Decode(&listed)
+	whs := listed["webhooks"].([]any)
+	if len(whs) < 1 {
+		t.Error("expected at least 1 webhook")
+	}
+
+	// Delete.
+	wDel := httptest.NewRecorder()
+	rDel := httptest.NewRequest("DELETE", "/manage/webhooks/"+whID, nil)
+	rDel.SetPathValue("id", whID)
+	h.DeleteWebhook(wDel, rDel)
+
+	if wDel.Code != http.StatusOK {
+		t.Errorf("DeleteWebhook status: got %d", wDel.Code)
+	}
+}

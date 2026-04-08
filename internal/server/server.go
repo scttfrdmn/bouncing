@@ -91,6 +91,7 @@ func New(cfg *config.Config, st store.Store, log *slog.Logger) (*Server, error) 
 
 	// ── Hooks dispatcher ──────────────────────────────────────────────────────
 	s.hooks = hooks.NewDispatcher(cfg.Webhooks, log)
+	s.hooks.WithStore(st)
 
 	// ── i18n ──────────────────────────────────────────────────────────────────
 	loc, err := i18n.New(cfg.I18n.DefaultLocale)
@@ -105,7 +106,7 @@ func New(cfg *config.Config, st store.Store, log *slog.Logger) (*Server, error) 
 		g := legal.NewGate(st, cfg.Legal, log)
 		legalGateImpl := g
 		legalGate = legalGateImpl
-		s.legalHandler = legal.NewHandler(g, s.issuer, s.refreshMgr, st, engine, s.i18n, log)
+		s.legalHandler = legal.NewHandler(g, s.issuer, s.refreshMgr, st, engine, s.hooks, s.i18n, log)
 	}
 
 	// ── OAuth providers ───────────────────────────────────────────────────────

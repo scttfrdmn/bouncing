@@ -32,6 +32,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /auth/refresh", s.handleRefresh)
 	mux.HandleFunc("POST /auth/logout", s.handleLogout)
 	mux.Handle("GET /auth/me", authMiddleware(http.HandlerFunc(s.handleMe)))
+	mux.HandleFunc("GET /auth/providers", s.handleProviders)
 
 	// ── Legal gate ────────────────────────────────────────────────────────────
 	if s.legalHandler != nil {
@@ -50,6 +51,17 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mgmt.HandleFunc("GET /manage/roles", s.mgmtHandler.ListRoles)
 	mgmt.HandleFunc("POST /manage/roles", s.mgmtHandler.CreateRole)
 	mgmt.HandleFunc("GET /manage/users/{id}/agreements", s.mgmtHandler.ListAgreements)
+
+	// ── Org routes ────────────────────────────────────────────────────────────
+	mgmt.HandleFunc("POST /manage/orgs", s.mgmtHandler.CreateOrg)
+	mgmt.HandleFunc("GET /manage/orgs", s.mgmtHandler.ListOrgs)
+	mgmt.HandleFunc("POST /manage/orgs/{org_id}/members", s.mgmtHandler.AddOrgMember)
+	mgmt.HandleFunc("DELETE /manage/orgs/{org_id}/members/{uid}", s.mgmtHandler.RemoveOrgMember)
+
+	// ── Webhook CRUD ──────────────────────────────────────────────────────────
+	mgmt.HandleFunc("GET /manage/webhooks", s.mgmtHandler.ListWebhooks)
+	mgmt.HandleFunc("POST /manage/webhooks", s.mgmtHandler.CreateWebhook)
+	mgmt.HandleFunc("DELETE /manage/webhooks/{id}", s.mgmtHandler.DeleteWebhook)
 
 	mux.Handle("/manage/", apiKeyMiddleware(mgmt))
 }

@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/scttfrdmn/bouncing/internal/config"
+	"github.com/scttfrdmn/bouncing/internal/store"
 )
 
 // Dispatcher sends webhook events asynchronously with retry.
 type Dispatcher struct {
 	webhooks []config.WebhookConfig
+	store    store.Store // optional; provides dynamically-added webhooks
 	client   *http.Client
 	log      *slog.Logger
 }
@@ -27,14 +29,41 @@ func NewDispatcher(webhooks []config.WebhookConfig, log *slog.Logger) *Dispatche
 	}
 }
 
+// WithStore attaches a store so that webhooks persisted via the management API
+// are also dispatched alongside config-file webhooks.
+func (d *Dispatcher) WithStore(s store.Store) {
+	d.store = s
+}
+
 // Dispatch fires event asynchronously to all matching webhooks.
+// It unions config-file webhooks with any persisted in the store.
 func (d *Dispatcher) Dispatch(ctx context.Context, event string, payload any) {
+	// Config-file webhooks.
 	for _, wh := range d.webhooks {
 		if !eventMatches(wh.Events, event) {
 			continue
 		}
-		wh := wh // capture
+		wh := wh
 		go d.send(context.Background(), wh, event, payload)
+	}
+	// Store-persisted webhooks (registered via management API).
+	if d.store != nil {
+		storeWhs, err := d.store.ListWebhooks(context.Background())
+		if err != nil {
+			d.log.Warn("hooks: list store webhooks", "err", err)
+			return
+		}
+		for _, sw := range storeWhs {
+			if !eventMatches(sw.Events, event) {
+				continue
+			}
+			sw := sw
+			go d.send(context.Background(), config.WebhookConfig{
+				URL:    sw.URL,
+				Events: sw.Events,
+				Secret: sw.Secret,
+			}, event, payload)
+		}
 	}
 }
 

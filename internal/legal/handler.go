@@ -26,6 +26,7 @@ type Handler struct {
 	refreshMgr *session.RefreshManager
 	store      store.Store
 	engine     *authz.Engine
+	hooks      HooksDispatcher
 	i18n       *i18n.Localizer
 	log        *slog.Logger
 }
@@ -37,6 +38,7 @@ func NewHandler(
 	refreshMgr *session.RefreshManager,
 	st store.Store,
 	engine *authz.Engine,
+	hooks HooksDispatcher,
 	loc *i18n.Localizer,
 	log *slog.Logger,
 ) *Handler {
@@ -46,6 +48,7 @@ func NewHandler(
 		refreshMgr: refreshMgr,
 		store:      st,
 		engine:     engine,
+		hooks:      hooks,
 		i18n:       loc,
 		log:        log,
 	}
@@ -165,6 +168,11 @@ func (h *Handler) RecordAgreement(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+
+	h.hooks.Dispatch(ctx, "user.tos.accepted", map[string]any{
+		"user_id": u.ID,
+		"email":   u.Email,
+	})
 
 	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 	setAuthCookies(w, accessToken, refreshToken, secure)

@@ -152,6 +152,11 @@ func (h *Handler) RegisterFinish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.hooks.Dispatch(ctx, "user.credential.added", map[string]any{
+		"user_id":       u.ID,
+		"credential_id": storedCred.ID,
+	})
+
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"credential_id": storedCred.ID,
 		"created_at":    time.Unix(storedCred.CreatedAt, 0).UTC().Format(time.RFC3339),
@@ -282,6 +287,12 @@ func (h *Handler) LoginFinish(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
 		return
 	}
+
+	h.hooks.Dispatch(ctx, "user.login", map[string]any{
+		"user_id": resolvedUser.ID,
+		"email":   resolvedUser.Email,
+		"method":  "webauthn",
+	})
 
 	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 	setAuthCookies(w, accessToken, refreshToken, secure)

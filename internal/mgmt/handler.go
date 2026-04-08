@@ -335,6 +335,136 @@ func (h *Handler) ListAgreements(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"agreements": acceptances})
 }
 
+// ── Organizations ─────────────────────────────────────────────────────────────
+
+// CreateOrg handles POST /manage/orgs
+func (h *Handler) CreateOrg(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req struct {
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "name required")
+		return
+	}
+
+	o := &store.Org{Name: req.Name, Slug: req.Slug}
+	if err := h.store.CreateOrg(ctx, o); err != nil {
+		h.log.Error("CreateOrg", "err", err)
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, o)
+}
+
+// ListOrgs handles GET /manage/orgs
+func (h *Handler) ListOrgs(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgs, err := h.store.ListOrgs(ctx)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"orgs": orgs})
+}
+
+// AddOrgMember handles POST /manage/orgs/{org_id}/members
+func (h *Handler) AddOrgMember(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgID := r.PathValue("org_id")
+
+	var req struct {
+		UserID string `json:"user_id"`
+		Role   string `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "user_id required")
+		return
+	}
+
+	role, err := h.store.GetRoleByName(ctx, req.Role)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "not_found", "role not found")
+		return
+	}
+
+	if err := h.store.AddOrgMember(ctx, orgID, req.UserID, role.ID); err != nil {
+		h.log.Error("AddOrgMember", "org_id", orgID, "err", err)
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// RemoveOrgMember handles DELETE /manage/orgs/{org_id}/members/{uid}
+func (h *Handler) RemoveOrgMember(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgID := r.PathValue("org_id")
+	userID := r.PathValue("uid")
+
+	if err := h.store.RemoveOrgMember(ctx, orgID, userID); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// ── Webhooks ──────────────────────────────────────────────────────────────────
+
+// ListWebhooks handles GET /manage/webhooks
+func (h *Handler) ListWebhooks(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	whs, err := h.store.ListWebhooks(ctx)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"webhooks": whs})
+}
+
+// CreateWebhook handles POST /manage/webhooks
+func (h *Handler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req struct {
+		URL    string   `json:"url"`
+		Events []string `json:"events"`
+		Secret string   `json:"secret"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.URL == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "url required")
+		return
+	}
+	if len(req.Events) == 0 {
+		req.Events = []string{"*"}
+	}
+
+	wh := &store.Webhook{URL: req.URL, Events: req.Events, Secret: req.Secret}
+	if err := h.store.CreateWebhook(ctx, wh); err != nil {
+		h.log.Error("CreateWebhook", "err", err)
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, wh)
+}
+
+// DeleteWebhook handles DELETE /manage/webhooks/{id}
+func (h *Handler) DeleteWebhook(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.PathValue("id")
+
+	if err := h.store.DeleteWebhook(ctx, id); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"deleted": true})
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func (h *Handler) assignRoleByName(ctx context.Context, userID, roleName string, orgID *string) error {
