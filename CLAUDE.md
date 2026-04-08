@@ -23,8 +23,22 @@ Product spec: see `bouncing-spec.md` in this repo root.
 
 ## Project Tracking
 
-All project tracking lives in **GitHub**, not in this file or standalone markdown.
+> **IMPORTANT FOR ALL AGENTS**: GitHub is the **sole** source of truth for all project work. Before writing any code, check open issues and the project board. After completing work, file or close issues and update the board. Never track tasks only in memory or task tools — every meaningful unit of work must have a GitHub issue.
 
+All project tracking lives in **GitHub** (`scttfrdmn/bouncing`), not in this file or standalone markdown.
+
+### Required workflow for every session
+
+1. **Start of session**: Run `gh issue list --milestone <current-milestone>` and `gh project item-list` to understand what is open, in-progress, and blocked.
+2. **Before coding**: Check whether an issue already exists for the work. If not, create one with appropriate labels and milestone before starting.
+3. **During work**: Move the issue to "In Progress" on the project board (`gh project item-edit`).
+4. **After coding**: Close the issue via PR or `gh issue close`, referencing the issue number in the commit message (`Closes #N`). Move the card to "Done".
+5. **New work discovered**: File a new issue immediately rather than doing it ad-hoc or silently.
+
+### GitHub setup (already configured)
+
+- **Repo**: `scttfrdmn/bouncing` (public) — open-source core
+- **Repo**: `scttfrdmn/bouncing-managed` (private) — managed ops
 - **GitHub Project**: "Bouncing" board with columns: Backlog → Ready → In Progress → Review → Done
 - **Milestones**: one per release version (`v0.1.0`, `v0.2.0`, `v0.3.0`, `v1.0.0`, `v2.0.0+`)
 - **Labels**:

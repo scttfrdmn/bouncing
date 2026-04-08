@@ -15,6 +15,7 @@ type Store interface {
 	UpdateUser(ctx context.Context, u *User) error
 	DeleteUser(ctx context.Context, id string) error
 	CountActiveUsers(ctx context.Context, since time.Time) (int64, error)
+	CountUsers(ctx context.Context, opts ListOpts) (int64, error)
 
 	// OAuth
 	CreateOAuthConnection(ctx context.Context, c *OAuthConnection) error

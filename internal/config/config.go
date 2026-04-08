@@ -40,7 +40,11 @@ type AccessConfig struct {
 }
 
 type AuthConfig struct {
-	Methods AuthMethodsConfig `yaml:"methods"`
+	Methods     AuthMethodsConfig `yaml:"methods"`
+	RedirectURL string            `yaml:"redirect_url"`  // where to send users after login
+	ErrorURL    string            `yaml:"error_url"`     // where to send users on auth failure
+	LogoutURL   string            `yaml:"logout_url"`    // where to redirect after logout
+	CORSOrigins []string          `yaml:"cors_origins"`  // allowed CORS origins (empty = all)
 }
 
 type AuthMethodsConfig struct {

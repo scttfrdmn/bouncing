@@ -1,8 +1,5 @@
 -- 001_initial.sql
-CREATE TABLE IF NOT EXISTS schema_version (
-    version     INTEGER PRIMARY KEY,
-    applied_at  INTEGER NOT NULL
-);
+-- Note: schema_version table and version tracking are managed by the migration runner.
 
 CREATE TABLE IF NOT EXISTS users (
     id          TEXT PRIMARY KEY,
@@ -43,8 +40,8 @@ CREATE TABLE IF NOT EXISTS roles (
 CREATE TABLE IF NOT EXISTS user_roles (
     user_id TEXT NOT NULL REFERENCES users(id),
     role_id TEXT NOT NULL REFERENCES roles(id),
-    org_id  TEXT,
-    PRIMARY KEY (user_id, role_id, COALESCE(org_id, ''))
+    org_id  TEXT NOT NULL DEFAULT '',  -- '' = global scope, non-empty = org-scoped
+    PRIMARY KEY (user_id, role_id, org_id)
 );
 
 CREATE TABLE IF NOT EXISTS orgs (
@@ -99,4 +96,3 @@ CREATE TABLE IF NOT EXISTS tos_acceptances (
     UNIQUE(user_id, version)
 );
 
-INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (1, strftime('%s', 'now'));
