@@ -31,3 +31,4 @@ sdk/js/**/.turbo/
 
 # goreleaser
 .goreleaser/
+bouncing
