@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-04-09
+
+### Added
+- Security headers middleware: X-Content-Type-Options, X-Frame-Options, CSP, Referrer-Policy, Permissions-Policy, HSTS (TLS-only)
+- Max body size middleware (1MB default) to prevent DoS via large payloads
+- Input validation: email format, webhook URL scheme, role name format, org slug format
+- gosec static analysis in CI and weekly security scan
+- SECURITY.md with responsible disclosure policy, response timeline, and security architecture docs
+
+### Changed
+- Email validation improved from simple `@` check to require dotted domain
+- Middleware chain: SecurityHeaders is now the outermost wrapper
+
 ## [0.6.0] — 2026-04-09
 
 ### Added
