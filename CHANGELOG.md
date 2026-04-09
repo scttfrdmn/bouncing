@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-04-09
+
+### Added
+- Custom OAuth/OIDC providers: set `issuer_url` in config to add any OIDC-compliant provider (Okta, Auth0, Keycloak, etc.) without code changes
+- OIDC auto-discovery via `.well-known/openid-configuration`
+- Generic OIDC userinfo fetcher for standard claims (sub, email, name, picture)
+- GitLab and Slack as built-in OIDC providers
+- Config-level scope overrides for any OAuth provider
+- OAuthProviderConfig gains `issuer_url` and `scopes` fields
+
+### Changed
+- NewProvider signature changed to accept OAuthProviderCfg struct (breaking internal API, no external impact)
+- Exchange() uses standard OIDC userinfo endpoint for custom and OIDC-native built-in providers
+
 ## [0.5.0] — 2026-04-09
 
 ### Added
