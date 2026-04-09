@@ -31,7 +31,7 @@ sdk/js/**/.turbo/
 
 # goreleaser
 .goreleaser/
-bouncing
+/bouncing
 
 # Local managed development overlay.
 # Symlink or worktree pointing to a checkout of scttfrdmn/bouncing-managed.
