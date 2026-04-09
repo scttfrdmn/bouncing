@@ -111,8 +111,9 @@ func TestStateTamperedHMAC(t *testing.T) {
 
 func TestNewProviderKnown(t *testing.T) {
 	t.Parallel()
-	for _, name := range []string{"google", "github", "microsoft", "apple"} {
-		p, err := NewProvider(name, "id", "secret", "https://example.com/callback")
+	for _, name := range []string{"google", "github", "microsoft", "apple", "gitlab", "slack"} {
+		cfg := OAuthProviderCfg{ClientID: "id", ClientSecret: "secret"}
+		p, err := NewProvider(name, cfg, "https://example.com/callback")
 		if err != nil {
 			t.Errorf("NewProvider(%q): %v", name, err)
 		}
@@ -127,7 +128,8 @@ func TestNewProviderKnown(t *testing.T) {
 
 func TestNewProviderUnknown(t *testing.T) {
 	t.Parallel()
-	_, err := NewProvider("twitter", "id", "secret", "https://example.com/callback")
+	cfg := OAuthProviderCfg{ClientID: "id", ClientSecret: "secret"}
+	_, err := NewProvider("twitter", cfg, "https://example.com/callback")
 	if err == nil {
 		t.Error("expected error for unknown provider")
 	}
@@ -356,7 +358,7 @@ func TestFetchMicrosoftMailEmpty(t *testing.T) {
 
 func TestBeginOAuthRedirects(t *testing.T) {
 	t.Parallel()
-	p, _ := NewProvider("google", "client-id", "client-secret", "https://example.com/callback")
+	p, _ := NewProvider("google", OAuthProviderCfg{ClientID: "client-id", ClientSecret: "client-secret"}, "https://example.com/callback")
 	h := &Handler{
 		provider: p,
 		stateMgr: NewStateManager([]byte("secret")),

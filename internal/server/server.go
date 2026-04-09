@@ -118,7 +118,12 @@ func New(cfg *config.Config, st store.Store, log *slog.Logger) (*Server, error) 
 	// ── OAuth providers ───────────────────────────────────────────────────────
 	for name, provCfg := range cfg.Auth.Methods.OAuth {
 		redirectURL := strings.TrimRight(cfg.BaseURL, "/") + "/auth/oauth/" + name + "/callback"
-		prov, err := oauth.NewProvider(name, provCfg.ClientID, provCfg.ClientSecret, redirectURL)
+		prov, err := oauth.NewProvider(name, oauth.OAuthProviderCfg{
+			ClientID:     provCfg.ClientID,
+			ClientSecret: provCfg.ClientSecret,
+			IssuerURL:    provCfg.IssuerURL,
+			Scopes:       provCfg.Scopes,
+		}, redirectURL)
 		if err != nil {
 			return nil, fmt.Errorf("server.New: oauth provider %q: %w", name, err)
 		}

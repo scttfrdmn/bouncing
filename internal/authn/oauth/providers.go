@@ -25,8 +25,17 @@ type UserInfo struct {
 
 // Provider wraps an oauth2.Config and knows how to fetch a UserInfo.
 type Provider struct {
-	Name   string
-	config *oauth2.Config
+	Name        string
+	config      *oauth2.Config
+	userinfoURL string // set for OIDC providers; empty for built-in with custom fetchers
+}
+
+// OAuthProviderCfg is the constructor input for NewProvider.
+type OAuthProviderCfg struct {
+	ClientID     string
+	ClientSecret string
+	IssuerURL    string
+	Scopes       []string
 }
 
 // AuthCodeURL returns the authorization redirect URL with the given state.
@@ -42,6 +51,12 @@ func (p *Provider) Exchange(ctx context.Context, code string) (*UserInfo, error)
 	}
 	client := p.config.Client(ctx, tok)
 
+	// OIDC providers use the standard userinfo endpoint.
+	if p.userinfoURL != "" {
+		return fetchOIDCUserInfo(client, p.userinfoURL)
+	}
+
+	// Built-in providers with custom fetchers.
 	switch p.Name {
 	case "google":
 		return fetchGoogle(client)
@@ -50,14 +65,40 @@ func (p *Provider) Exchange(ctx context.Context, code string) (*UserInfo, error)
 	case "microsoft":
 		return fetchMicrosoft(client)
 	case "apple":
-		return fetchApple(tok) // tok implements tokenExtraer
+		return fetchApple(tok)
 	default:
 		return nil, fmt.Errorf("oauth.Exchange: unknown provider %q", p.Name)
 	}
 }
 
-// NewProvider builds a Provider for the named service.
-func NewProvider(name, clientID, clientSecret, redirectURL string) (*Provider, error) {
+// NewProvider builds a Provider. If cfg.IssuerURL is set, OIDC auto-discovery
+// is used. Otherwise, the provider name must match a built-in (google, github,
+// microsoft, apple, gitlab, slack).
+func NewProvider(name string, cfg OAuthProviderCfg, redirectURL string) (*Provider, error) {
+	// Custom OIDC provider — auto-discovery.
+	if cfg.IssuerURL != "" {
+		return newOIDCProvider(name, cfg, redirectURL)
+	}
+
+	// Built-in OIDC providers (use standard userinfo).
+	switch name {
+	case "gitlab":
+		return newBuiltinOIDC(name, cfg, redirectURL,
+			"https://gitlab.com/oauth/authorize",
+			"https://gitlab.com/oauth/token",
+			"https://gitlab.com/oauth/userinfo",
+			[]string{"openid", "email", "profile"},
+		)
+	case "slack":
+		return newBuiltinOIDC(name, cfg, redirectURL,
+			"https://slack.com/openid/connect/authorize",
+			"https://slack.com/api/openid.connect.token",
+			"https://slack.com/api/openid.connect.userInfo",
+			[]string{"openid", "email", "profile"},
+		)
+	}
+
+	// Built-in providers with custom fetchers.
 	var endpoint oauth2.Endpoint
 	var scopes []string
 
@@ -78,14 +119,19 @@ func NewProvider(name, clientID, clientSecret, redirectURL string) (*Provider, e
 		}
 		scopes = []string{"name", "email"}
 	default:
-		return nil, fmt.Errorf("oauth.NewProvider: unknown provider %q", name)
+		return nil, fmt.Errorf("oauth.NewProvider: unknown provider %q (set issuer_url for custom OIDC)", name)
+	}
+
+	// Allow config-level scope overrides.
+	if len(cfg.Scopes) > 0 {
+		scopes = cfg.Scopes
 	}
 
 	return &Provider{
 		Name: name,
 		config: &oauth2.Config{
-			ClientID:     clientID,
-			ClientSecret: clientSecret,
+			ClientID:     cfg.ClientID,
+			ClientSecret: cfg.ClientSecret,
 			RedirectURL:  redirectURL,
 			Scopes:       scopes,
 			Endpoint:     endpoint,
@@ -93,7 +139,58 @@ func NewProvider(name, clientID, clientSecret, redirectURL string) (*Provider, e
 	}, nil
 }
 
-// ── per-provider fetchers ─────────────────────────────────────────────────────
+// newOIDCProvider creates a provider via OIDC auto-discovery.
+func newOIDCProvider(name string, cfg OAuthProviderCfg, redirectURL string) (*Provider, error) {
+	disc, err := Discover(context.Background(), cfg.IssuerURL)
+	if err != nil {
+		return nil, fmt.Errorf("oauth.NewProvider(%s): %w", name, err)
+	}
+
+	scopes := cfg.Scopes
+	if len(scopes) == 0 {
+		scopes = []string{"openid", "email", "profile"}
+	}
+
+	return &Provider{
+		Name: name,
+		config: &oauth2.Config{
+			ClientID:     cfg.ClientID,
+			ClientSecret: cfg.ClientSecret,
+			RedirectURL:  redirectURL,
+			Scopes:       scopes,
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  disc.AuthorizationEndpoint,
+				TokenURL: disc.TokenEndpoint,
+			},
+		},
+		userinfoURL: disc.UserinfoEndpoint,
+	}, nil
+}
+
+// newBuiltinOIDC creates a provider for a known OIDC-compliant service with
+// hardcoded endpoints (no discovery fetch needed at startup).
+func newBuiltinOIDC(name string, cfg OAuthProviderCfg, redirectURL, authURL, tokenURL, userinfoURL string, defaultScopes []string) (*Provider, error) {
+	scopes := cfg.Scopes
+	if len(scopes) == 0 {
+		scopes = defaultScopes
+	}
+	return &Provider{
+		Name: name,
+		config: &oauth2.Config{
+			ClientID:     cfg.ClientID,
+			ClientSecret: cfg.ClientSecret,
+			RedirectURL:  redirectURL,
+			Scopes:       scopes,
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  authURL,
+				TokenURL: tokenURL,
+			},
+		},
+		userinfoURL: userinfoURL,
+	}, nil
+}
+
+// ── per-provider fetchers (built-in only) ────────────────────────────────────
 
 func fetchGoogle(client *http.Client) (*UserInfo, error) {
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v3/userinfo")
@@ -210,7 +307,6 @@ type tokenExtraer interface {
 }
 
 func fetchApple(tok tokenExtraer) (*UserInfo, error) {
-	// Apple puts the profile in the id_token JWT claims.
 	idTokenRaw, ok := tok.Extra("id_token").(string)
 	if !ok || idTokenRaw == "" {
 		return nil, fmt.Errorf("apple: no id_token in response")
@@ -221,9 +317,6 @@ func fetchApple(tok tokenExtraer) (*UserInfo, error) {
 		return nil, fmt.Errorf("apple: malformed id_token")
 	}
 
-	// Decode the payload (middle segment) without signature verification.
-	// We accept the risk: Apple's id_token is delivered over TLS from
-	// the token endpoint, so transport security is the integrity guarantee.
 	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		return nil, fmt.Errorf("apple: id_token payload decode: %w", err)

@@ -68,8 +68,10 @@ type AuthMethodsConfig struct {
 }
 
 type OAuthProviderConfig struct {
-	ClientID     string `yaml:"client_id"`
-	ClientSecret string `yaml:"client_secret"`
+	ClientID     string   `yaml:"client_id"`
+	ClientSecret string   `yaml:"client_secret"`
+	IssuerURL    string   `yaml:"issuer_url,omitempty"` // OIDC discovery URL; if set, uses generic OIDC flow
+	Scopes       []string `yaml:"scopes,omitempty"`     // override default scopes
 }
 
 type PasskeyConfig struct {
