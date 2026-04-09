@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-04-09
+
+### Added
+- Management dashboard: embedded HTMX + Go templates web UI at /dashboard/
+  - User list with search/filter and inline delete
+  - User detail with role assignment/revocation
+  - Role list with create/delete
+  - Organization list with create
+  - Webhook list with create/delete
+  - Audit log viewer with actor/action filters
+- RequireAdmin middleware (RequireAuth + admin role check)
+- Pico CSS for classless styling, HTMX for inline CRUD
+- All templates and static assets embedded via go:embed (single binary)
+
 ## [0.3.0] — 2026-04-09
 
 ### Added
