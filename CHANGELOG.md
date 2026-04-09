@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-04-09
+
+### Added
+- Test coverage improvements across 6 packages (legal, webauthn, oauth, directory, dashboard, server)
+- Dashboard test suite: page renders, HTMX create/delete mutations
+- OAuth edge case tests via gock: GitHub no-primary-email, Microsoft UPN fallback
+- Directory sync tests: mixed results, nil hooks, bad service account file
+- Legal tests: accessor methods, ClearPendingCookie, ShowAgreement HTML rendering
+
+### Fixed
+- Dashboard template rendering: per-page template parsing prevents {{define "content"}} collisions
+
 ## [0.4.0] — 2026-04-09
 
 ### Added
