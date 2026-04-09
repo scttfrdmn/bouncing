@@ -20,6 +20,7 @@ import (
 	authnwebauthn "github.com/scttfrdmn/bouncing/internal/authn/webauthn"
 	"github.com/scttfrdmn/bouncing/internal/authz"
 	"github.com/scttfrdmn/bouncing/internal/config"
+	"github.com/scttfrdmn/bouncing/internal/scim"
 	"github.com/scttfrdmn/bouncing/internal/hooks"
 	"github.com/scttfrdmn/bouncing/internal/i18n"
 	"github.com/scttfrdmn/bouncing/internal/legal"
@@ -47,6 +48,8 @@ type Server struct {
 	webAuthnHandler *authnwebauthn.Handler
 	legalHandler    *legal.Handler
 	mgmtHandler     *mgmt.Handler
+	scimHandler     *scim.Handler
+	scimToken       string
 	apiKey          *mgmt.APIKey
 	hooks           *hooks.Dispatcher
 	i18n            *i18n.Localizer
@@ -177,6 +180,12 @@ func New(cfg *config.Config, st store.Store, log *slog.Logger) (*Server, error) 
 		Hooks:  s.hooks,
 		Log:    log,
 	})
+
+	// ── SCIM (optional) ───────────────────────────────────────────────────────
+	if cfg.SCIM != nil && cfg.SCIM.Enabled {
+		s.scimHandler = scim.NewHandler(st, s.hooks, log)
+		s.scimToken = cfg.SCIM.BearerToken
+	}
 
 	return s, nil
 }

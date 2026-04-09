@@ -22,6 +22,13 @@ type Config struct {
 	I18n      I18nConfig       `yaml:"i18n"`
 	Webhooks  []WebhookConfig  `yaml:"webhooks"`
 	Directory *DirectoryConfig `yaml:"directory,omitempty"`
+	SCIM      *SCIMConfig      `yaml:"scim,omitempty"`
+}
+
+// SCIMConfig controls the SCIM 2.0 provisioning endpoint.
+type SCIMConfig struct {
+	Enabled     bool   `yaml:"enabled"`
+	BearerToken string `yaml:"bearer_token"`
 }
 
 // RateLimitConfig controls the per-IP token-bucket rate limiter for auth endpoints.

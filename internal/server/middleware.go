@@ -133,6 +133,20 @@ func RequireAPIKey(validate func(string) bool) func(http.Handler) http.Handler {
 	}
 }
 
+// RequireSCIMToken validates the Bearer token against a static SCIM token.
+func RequireSCIMToken(token string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			key := bearerToken(r)
+			if key == "" || key != token {
+				writeError(w, http.StatusUnauthorized, ErrCodeUnauthorized, "valid SCIM token required")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func bearerToken(r *http.Request) string {
 	v := r.Header.Get("Authorization")
 	if after, ok := strings.CutPrefix(v, "Bearer "); ok {

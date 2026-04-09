@@ -55,6 +55,9 @@ type DirectoryConfig = iconfig.DirectoryConfig
 // RateLimitConfig controls the per-IP token-bucket rate limiter.
 type RateLimitConfig = iconfig.RateLimitConfig
 
+// SCIMConfig controls the SCIM 2.0 provisioning endpoint.
+type SCIMConfig = iconfig.SCIMConfig
+
 // Load reads and parses the bouncing.yaml at path, applies defaults, and
 // validates required fields.
 func Load(path string) (*Config, error) { return iconfig.Load(path) }

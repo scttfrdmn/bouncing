@@ -78,4 +78,15 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mgmt.HandleFunc("DELETE /manage/webhooks/{id}", s.mgmtHandler.DeleteWebhook)
 
 	mux.Handle("/manage/", apiKeyMiddleware(mgmt))
+
+	// ── SCIM (optional) ───────────────────────────────────────────────────
+	if s.scimHandler != nil {
+		scimMux := http.NewServeMux()
+		scimMux.HandleFunc("POST /scim/v2/Users", s.scimHandler.CreateUser)
+		scimMux.HandleFunc("GET /scim/v2/Users/{id}", s.scimHandler.GetUser)
+		scimMux.HandleFunc("PATCH /scim/v2/Users/{id}", s.scimHandler.PatchUser)
+		scimMux.HandleFunc("DELETE /scim/v2/Users/{id}", s.scimHandler.DeleteUser)
+		scimMux.HandleFunc("GET /scim/v2/Groups", s.scimHandler.ListGroups)
+		mux.Handle("/scim/", RequireSCIMToken(s.scimToken)(scimMux))
+	}
 }
