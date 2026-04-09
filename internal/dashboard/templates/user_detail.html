@@ -1,0 +1,73 @@
+{{define "content"}}
+<h1>{{.User.Email}}</h1>
+
+<article>
+  <header>User Details</header>
+  <dl>
+    <dt>ID</dt><dd><code>{{.User.ID}}</code></dd>
+    <dt>Name</dt><dd>{{.User.Name}}</dd>
+    <dt>Status</dt><dd>{{.User.Status}}</dd>
+    <dt>Auth Method</dt><dd>{{.User.AuthMethod}}</dd>
+  </dl>
+</article>
+
+<article>
+  <header>Roles</header>
+  <div id="roles-section">
+    {{if .Roles}}
+    <table>
+      <thead><tr><th>Role</th><th>Actions</th></tr></thead>
+      <tbody>
+        {{range .Roles}}
+        <tr id="role-assign-{{.RoleID}}">
+          <td>{{.Name}}</td>
+          <td>
+            <button hx-delete="/dashboard/users/{{$.User.ID}}/roles/{{.RoleID}}"
+                    hx-target="#roles-section"
+                    hx-swap="innerHTML"
+                    class="outline secondary">Remove</button>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p>No roles assigned.</p>
+    {{end}}
+  </div>
+
+  <form hx-post="/dashboard/users/{{.User.ID}}/roles"
+        hx-target="#roles-section"
+        hx-swap="innerHTML">
+    <fieldset role="group">
+      <select name="role" required>
+        <option value="">Assign role...</option>
+        {{range .AvailableRoles}}
+        <option value="{{.Name}}">{{.Name}}</option>
+        {{end}}
+      </select>
+      <button type="submit">Assign</button>
+    </fieldset>
+  </form>
+</article>
+
+<article>
+  <header>Agreements</header>
+  {{if .Agreements}}
+  <table>
+    <thead><tr><th>Version</th><th>Name Typed</th><th>Accepted At</th></tr></thead>
+    <tbody>
+      {{range .Agreements}}
+      <tr>
+        <td>{{.Version}}</td>
+        <td>{{.NameTyped}}</td>
+        <td>{{.AcceptedAt}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p>No agreements recorded.</p>
+  {{end}}
+</article>
+{{end}}

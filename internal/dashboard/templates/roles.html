@@ -1,0 +1,45 @@
+{{define "content"}}
+<h1>Roles</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Permissions</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="roles-list">
+    {{range .Roles}}
+    <tr id="role-{{.ID}}">
+      <td>{{.Name}}</td>
+      <td><code>{{joinPerms .Permissions}}</code></td>
+      <td>
+        <button hx-delete="/dashboard/roles/{{.ID}}"
+                hx-target="#role-{{.ID}}"
+                hx-swap="outerHTML"
+                hx-confirm="Delete role {{.Name}}?"
+                class="outline secondary">Delete</button>
+      </td>
+    </tr>
+    {{else}}
+    <tr><td colspan="3">No roles defined.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+
+<article>
+  <header>Create Role</header>
+  <form hx-post="/dashboard/roles"
+        hx-target="#roles-list"
+        hx-swap="beforeend">
+    <label>Name
+      <input type="text" name="name" required placeholder="editor">
+    </label>
+    <label>Permissions (comma-separated)
+      <input type="text" name="permissions" required placeholder="content:read, content:write">
+    </label>
+    <button type="submit">Create</button>
+  </form>
+</article>
+{{end}}

@@ -1,0 +1,38 @@
+{{define "content"}}
+<h1>Audit Log</h1>
+
+<form method="GET" action="/dashboard/audit" role="search">
+  <fieldset role="group">
+    <input type="text" name="actor_id" placeholder="Actor ID" value="{{.ActorID}}">
+    <input type="text" name="action" placeholder="Action (e.g. user.login)" value="{{.Action}}">
+    <button type="submit">Filter</button>
+  </fieldset>
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Action</th>
+      <th>Actor</th>
+      <th>Target</th>
+      <th>IP</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Entries}}
+    <tr>
+      <td>{{.Timestamp}}</td>
+      <td><code>{{.Action}}</code></td>
+      <td>{{.ActorID}}</td>
+      <td>{{.TargetType}}/{{.TargetID}}</td>
+      <td>{{.IPAddress}}</td>
+    </tr>
+    {{else}}
+    <tr><td colspan="5">No audit entries.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+
+<p>Total: {{.Total}} entries (page {{.Page}})</p>
+{{end}}

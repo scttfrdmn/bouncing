@@ -133,6 +133,33 @@ func RequireAPIKey(validate func(string) bool) func(http.Handler) http.Handler {
 	}
 }
 
+// RequireAdmin chains RequireAuth + admin role check. Returns 401 if not
+// authenticated, 403 if authenticated but not admin.
+func RequireAdmin(issuer *session.Issuer) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		inner := RequireAuth(issuer)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims := ClaimsFromContext(r.Context())
+			if claims == nil {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			isAdmin := false
+			for _, role := range claims.Roles {
+				if role == "admin" {
+					isAdmin = true
+					break
+				}
+			}
+			if !isAdmin {
+				http.Error(w, "Forbidden — admin role required", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		}))
+		return inner
+	}
+}
+
 // RequireSCIMToken validates the Bearer token against a static SCIM token.
 func RequireSCIMToken(token string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

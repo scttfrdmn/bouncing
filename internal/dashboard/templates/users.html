@@ -1,0 +1,47 @@
+{{define "content"}}
+<h1>Users</h1>
+
+<form method="GET" action="/dashboard/users" role="search">
+  <input type="search" name="q" placeholder="Search by email or name" value="{{.Query}}">
+  <select name="status">
+    <option value="">All statuses</option>
+    <option value="active"{{if eq .Status "active"}} selected{{end}}>Active</option>
+    <option value="pending"{{if eq .Status "pending"}} selected{{end}}>Pending</option>
+    <option value="suspended"{{if eq .Status "suspended"}} selected{{end}}>Suspended</option>
+  </select>
+  <button type="submit">Filter</button>
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th>Email</th>
+      <th>Name</th>
+      <th>Status</th>
+      <th>Auth Method</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Users}}
+    <tr id="user-{{.ID}}">
+      <td><a href="/dashboard/users/{{.ID}}">{{.Email}}</a></td>
+      <td>{{.Name}}</td>
+      <td>{{.Status}}</td>
+      <td>{{.AuthMethod}}</td>
+      <td>
+        <button hx-delete="/dashboard/users/{{.ID}}"
+                hx-target="#user-{{.ID}}"
+                hx-swap="outerHTML"
+                hx-confirm="Delete user {{.Email}}?"
+                class="outline secondary">Delete</button>
+      </td>
+    </tr>
+    {{else}}
+    <tr><td colspan="5">No users found.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+
+<p>Total: {{.Total}} users (page {{.Page}})</p>
+{{end}}

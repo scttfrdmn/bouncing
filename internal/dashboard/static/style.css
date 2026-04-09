@@ -1,0 +1,31 @@
+/* Bouncing Dashboard — minimal overrides for Pico CSS */
+
+nav a.active {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+code {
+  font-size: 0.85em;
+}
+
+button.outline.secondary {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+table td, table th {
+  white-space: nowrap;
+}
+
+form[role="search"] {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+form[role="search"] input,
+form[role="search"] select {
+  margin-bottom: 0;
+}

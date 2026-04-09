@@ -20,6 +20,7 @@ import (
 	authnwebauthn "github.com/scttfrdmn/bouncing/internal/authn/webauthn"
 	"github.com/scttfrdmn/bouncing/internal/authz"
 	"github.com/scttfrdmn/bouncing/internal/config"
+	"github.com/scttfrdmn/bouncing/internal/dashboard"
 	"github.com/scttfrdmn/bouncing/internal/scim"
 	"github.com/scttfrdmn/bouncing/internal/hooks"
 	"github.com/scttfrdmn/bouncing/internal/i18n"
@@ -48,9 +49,10 @@ type Server struct {
 	webAuthnHandler *authnwebauthn.Handler
 	legalHandler    *legal.Handler
 	mgmtHandler     *mgmt.Handler
-	scimHandler     *scim.Handler
-	scimToken       string
-	apiKey          *mgmt.APIKey
+	scimHandler      *scim.Handler
+	scimToken        string
+	dashboardHandler *dashboard.Handler
+	apiKey           *mgmt.APIKey
 	hooks           *hooks.Dispatcher
 	i18n            *i18n.Localizer
 	rateLimiter     *RateLimiter
@@ -180,6 +182,9 @@ func New(cfg *config.Config, st store.Store, log *slog.Logger) (*Server, error) 
 		Hooks:  s.hooks,
 		Log:    log,
 	})
+
+	// ── Dashboard ─────────────────────────────────────────────────────────────
+	s.dashboardHandler = dashboard.NewHandler(st, log)
 
 	// ── SCIM (optional) ───────────────────────────────────────────────────────
 	if cfg.SCIM != nil && cfg.SCIM.Enabled {

@@ -1,0 +1,13 @@
+{{define "webhook_row"}}
+<tr id="wh-{{.ID}}">
+  <td><code>{{.URL}}</code></td>
+  <td>{{joinPerms .Events}}</td>
+  <td>
+    <button hx-delete="/dashboard/webhooks/{{.ID}}"
+            hx-target="#wh-{{.ID}}"
+            hx-swap="outerHTML"
+            hx-confirm="Delete webhook?"
+            class="outline secondary">Delete</button>
+  </td>
+</tr>
+{{end}}

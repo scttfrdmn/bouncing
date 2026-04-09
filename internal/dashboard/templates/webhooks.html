@@ -1,0 +1,48 @@
+{{define "content"}}
+<h1>Webhooks</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>URL</th>
+      <th>Events</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="webhooks-list">
+    {{range .Webhooks}}
+    <tr id="wh-{{.ID}}">
+      <td><code>{{.URL}}</code></td>
+      <td>{{joinPerms .Events}}</td>
+      <td>
+        <button hx-delete="/dashboard/webhooks/{{.ID}}"
+                hx-target="#wh-{{.ID}}"
+                hx-swap="outerHTML"
+                hx-confirm="Delete webhook?"
+                class="outline secondary">Delete</button>
+      </td>
+    </tr>
+    {{else}}
+    <tr><td colspan="3">No webhooks configured.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+
+<article>
+  <header>Add Webhook</header>
+  <form hx-post="/dashboard/webhooks"
+        hx-target="#webhooks-list"
+        hx-swap="beforeend">
+    <label>URL
+      <input type="url" name="url" required placeholder="https://example.com/hook">
+    </label>
+    <label>Events (comma-separated)
+      <input type="text" name="events" required placeholder="user.created, user.login">
+    </label>
+    <label>Secret
+      <input type="text" name="secret" placeholder="whsec_...">
+    </label>
+    <button type="submit">Add</button>
+  </form>
+</article>
+{{end}}

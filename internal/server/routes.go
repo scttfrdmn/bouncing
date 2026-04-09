@@ -2,6 +2,8 @@ package server
 
 import (
 	"net/http"
+
+	"github.com/scttfrdmn/bouncing/internal/dashboard"
 )
 
 // registerRoutes wires all application endpoints onto mux.
@@ -78,6 +80,26 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mgmt.HandleFunc("DELETE /manage/webhooks/{id}", s.mgmtHandler.DeleteWebhook)
 
 	mux.Handle("/manage/", apiKeyMiddleware(mgmt))
+
+	// ── Dashboard (admin-only) ────────────────────────────────────────────
+	dashMux := http.NewServeMux()
+	dashMux.HandleFunc("GET /dashboard/", s.dashboardHandler.Users)
+	dashMux.HandleFunc("GET /dashboard/users", s.dashboardHandler.Users)
+	dashMux.HandleFunc("GET /dashboard/users/{id}", s.dashboardHandler.UserDetail)
+	dashMux.HandleFunc("DELETE /dashboard/users/{id}", s.dashboardHandler.DeleteUser)
+	dashMux.HandleFunc("POST /dashboard/users/{id}/roles", s.dashboardHandler.AssignRole)
+	dashMux.HandleFunc("DELETE /dashboard/users/{id}/roles/{role_id}", s.dashboardHandler.RevokeRole)
+	dashMux.HandleFunc("GET /dashboard/roles", s.dashboardHandler.Roles)
+	dashMux.HandleFunc("POST /dashboard/roles", s.dashboardHandler.CreateRole)
+	dashMux.HandleFunc("DELETE /dashboard/roles/{id}", s.dashboardHandler.DeleteRole)
+	dashMux.HandleFunc("GET /dashboard/orgs", s.dashboardHandler.Orgs)
+	dashMux.HandleFunc("POST /dashboard/orgs", s.dashboardHandler.CreateOrg)
+	dashMux.HandleFunc("GET /dashboard/webhooks", s.dashboardHandler.Webhooks)
+	dashMux.HandleFunc("POST /dashboard/webhooks", s.dashboardHandler.CreateWebhook)
+	dashMux.HandleFunc("DELETE /dashboard/webhooks/{id}", s.dashboardHandler.DeleteWebhook)
+	dashMux.HandleFunc("GET /dashboard/audit", s.dashboardHandler.Audit)
+	dashMux.Handle("GET /dashboard/static/", http.StripPrefix("/dashboard/static/", http.FileServer(http.FS(dashboard.StaticFS()))))
+	mux.Handle("/dashboard/", RequireAdmin(s.issuer)(dashMux))
 
 	// ── SCIM (optional) ───────────────────────────────────────────────────
 	if s.scimHandler != nil {

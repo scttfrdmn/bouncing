@@ -1,0 +1,28 @@
+{{define "layout"}}<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} - Bouncing</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="/dashboard/static/style.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+  <nav class="container">
+    <ul>
+      <li><strong>bouncing</strong></li>
+    </ul>
+    <ul>
+      <li><a href="/dashboard/users"{{if eq .Nav "users"}} class="active"{{end}}>Users</a></li>
+      <li><a href="/dashboard/roles"{{if eq .Nav "roles"}} class="active"{{end}}>Roles</a></li>
+      <li><a href="/dashboard/orgs"{{if eq .Nav "orgs"}} class="active"{{end}}>Orgs</a></li>
+      <li><a href="/dashboard/webhooks"{{if eq .Nav "webhooks"}} class="active"{{end}}>Webhooks</a></li>
+      <li><a href="/dashboard/audit"{{if eq .Nav "audit"}} class="active"{{end}}>Audit</a></li>
+    </ul>
+  </nav>
+  <main class="container">
+    {{template "content" .}}
+  </main>
+</body>
+</html>{{end}}

@@ -1,0 +1,13 @@
+{{define "role_row"}}
+<tr id="role-{{.ID}}">
+  <td>{{.Name}}</td>
+  <td><code>{{joinPerms .Permissions}}</code></td>
+  <td>
+    <button hx-delete="/dashboard/roles/{{.ID}}"
+            hx-target="#role-{{.ID}}"
+            hx-swap="outerHTML"
+            hx-confirm="Delete role {{.Name}}?"
+            class="outline secondary">Delete</button>
+  </td>
+</tr>
+{{end}}

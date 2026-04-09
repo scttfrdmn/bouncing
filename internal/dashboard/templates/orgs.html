@@ -1,0 +1,37 @@
+{{define "content"}}
+<h1>Organizations</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Slug</th>
+    </tr>
+  </thead>
+  <tbody id="orgs-list">
+    {{range .Orgs}}
+    <tr>
+      <td>{{.Name}}</td>
+      <td><code>{{.Slug}}</code></td>
+    </tr>
+    {{else}}
+    <tr><td colspan="2">No organizations.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+
+<article>
+  <header>Create Organization</header>
+  <form hx-post="/dashboard/orgs"
+        hx-target="#orgs-list"
+        hx-swap="beforeend">
+    <label>Name
+      <input type="text" name="name" required placeholder="Acme Corp">
+    </label>
+    <label>Slug
+      <input type="text" name="slug" required placeholder="acme">
+    </label>
+    <button type="submit">Create</button>
+  </form>
+</article>
+{{end}}
