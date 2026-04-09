@@ -60,14 +60,14 @@ func New(cfg *config.Config, st store.Store, log *slog.Logger) (*Server, error) 
 	s := &Server{cfg: cfg, store: st, log: log, stop: make(chan struct{})}
 
 	// ── Keys + JWT issuer ─────────────────────────────────────────────────────
-	keys, err := session.LoadOrGenerate(cfg.Signing.KeysDir)
+	ring, err := session.LoadAll(cfg.Signing.KeysDir)
 	if err != nil {
 		return nil, fmt.Errorf("server.New: keys: %w", err)
 	}
-	s.issuer = session.NewIssuer(keys, cfg.Session.AccessTokenTTL, cfg.BaseURL)
+	s.issuer = session.NewIssuer(ring, cfg.Session.AccessTokenTTL, cfg.BaseURL)
 	s.refreshMgr = session.NewRefreshManager(st, cfg.Session.RefreshTokenTTL)
 
-	jwksH, err := session.NewJWKSHandler(keys)
+	jwksH, err := session.NewJWKSHandler(ring)
 	if err != nil {
 		return nil, fmt.Errorf("server.New: jwks: %w", err)
 	}

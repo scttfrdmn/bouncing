@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -20,29 +22,88 @@ type KeySet struct {
 	KID     string
 }
 
-// LoadOrGenerate loads the current month's Ed25519 keypair from dir, generating
-// and persisting it if it does not yet exist.
-// KID format: "bouncing-YYYY-MM"
-func LoadOrGenerate(dir string) (*KeySet, error) {
+// KeyRing holds multiple Ed25519 keypairs. The newest key (by KID) is used for
+// signing; all keys are available for verification and served via JWKS.
+type KeyRing struct {
+	Keys    []*KeySet // sorted newest-first by KID
+	Current *KeySet   // alias for Keys[0] — the signing key
+}
+
+// LoadAll loads all Ed25519 keypairs from dir. If no keys exist, a new one
+// is generated for the current month. Keys are sorted newest-first by KID.
+func LoadAll(dir string) (*KeyRing, error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
-		return nil, fmt.Errorf("session.LoadOrGenerate: mkdir: %w", err)
+		return nil, fmt.Errorf("session.LoadAll: mkdir: %w", err)
 	}
 
-	kid := "bouncing-" + time.Now().UTC().Format("2006-01")
-	privPath := filepath.Join(dir, kid+".priv.pem")
-	pubPath := filepath.Join(dir, kid+".pub.pem")
-
-	// Try to load existing keys.
-	if _, err := os.Stat(privPath); err == nil {
-		return loadKeyPair(kid, privPath, pubPath)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("session.LoadAll: readdir: %w", err)
 	}
 
-	// Generate new Ed25519 keypair.
-	// Note: ed25519.GenerateKey returns (PublicKey, PrivateKey, error).
+	var keys []*KeySet
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".priv.pem") {
+			continue
+		}
+		kid := strings.TrimSuffix(name, ".priv.pem")
+		privPath := filepath.Join(dir, name)
+		pubPath := filepath.Join(dir, kid+".pub.pem")
+
+		ks, err := loadKeyPair(kid, privPath, pubPath)
+		if err != nil {
+			return nil, fmt.Errorf("session.LoadAll: load %s: %w", kid, err)
+		}
+		keys = append(keys, ks)
+	}
+
+	// If no keys exist, generate one for the current month.
+	if len(keys) == 0 {
+		ks, err := generateKey(dir)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, ks)
+	}
+
+	// Sort newest-first by KID (lexicographic descending works for YYYY-MM format).
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i].KID > keys[j].KID
+	})
+
+	return &KeyRing{Keys: keys, Current: keys[0]}, nil
+}
+
+// LoadOrGenerate loads or generates a single keypair for backward compatibility.
+// It returns a KeyRing with one key.
+func LoadOrGenerate(dir string) (*KeyRing, error) {
+	return LoadAll(dir)
+}
+
+// Rotate generates a new Ed25519 keypair in dir with a unique KID and returns
+// the updated KeyRing with the new key as Current.
+func Rotate(dir string) (*KeyRing, error) {
+	ks, err := generateKey(dir)
+	if err != nil {
+		return nil, fmt.Errorf("session.Rotate: %w", err)
+	}
+	_ = ks // the key is now on disk
+
+	return LoadAll(dir)
+}
+
+// generateKey creates a new Ed25519 keypair with a timestamped KID.
+func generateKey(dir string) (*KeySet, error) {
+	kid := "bouncing-" + time.Now().UTC().Format("2006-01-02T150405.000")
+
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
-		return nil, fmt.Errorf("session.LoadOrGenerate: generate: %w", err)
+		return nil, fmt.Errorf("session.generateKey: %w", err)
 	}
+
+	privPath := filepath.Join(dir, kid+".priv.pem")
+	pubPath := filepath.Join(dir, kid+".pub.pem")
 
 	if err := writePrivKey(privPath, priv); err != nil {
 		return nil, err
@@ -54,7 +115,7 @@ func LoadOrGenerate(dir string) (*KeySet, error) {
 	return &KeySet{Private: priv, Public: pub, KID: kid}, nil
 }
 
-func loadKeyPair(kid, privPath, pubPath string) (*KeySet, error) {
+func loadKeyPair(kid, privPath, _ string) (*KeySet, error) {
 	privPEM, err := os.ReadFile(privPath)
 	if err != nil {
 		return nil, fmt.Errorf("session.loadKeyPair: read priv: %w", err)

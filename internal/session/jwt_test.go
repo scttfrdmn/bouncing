@@ -345,6 +345,78 @@ func TestRefreshRevokeAll(t *testing.T) {
 	}
 }
 
+// ── Key rotation ─────────────────────────────────────────────────────────────
+
+func TestRotateAndVerifyOldToken(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	// Load initial key ring (generates first key).
+	ring1, err := LoadAll(dir)
+	if err != nil {
+		t.Fatalf("LoadAll: %v", err)
+	}
+	issuer1 := NewIssuer(ring1, 15*time.Minute, "https://test.example.com")
+
+	// Issue a token with the first key.
+	token, err := issuer1.Issue(ctx, sampleClaims())
+	if err != nil {
+		t.Fatalf("Issue: %v", err)
+	}
+
+	// Rotate — generates a new key.
+	time.Sleep(time.Millisecond) // ensure different timestamp
+	ring2, err := Rotate(dir)
+	if err != nil {
+		t.Fatalf("Rotate: %v", err)
+	}
+
+	if len(ring2.Keys) < 2 {
+		t.Fatalf("expected ≥2 keys after rotation, got %d", len(ring2.Keys))
+	}
+	if ring2.Current.KID == ring1.Current.KID {
+		t.Error("Rotate should produce a new current KID")
+	}
+
+	// Verify old token with new ring — should still work.
+	issuer2 := NewIssuer(ring2, 15*time.Minute, "https://test.example.com")
+	claims, err := issuer2.Verify(ctx, token)
+	if err != nil {
+		t.Fatalf("Verify old token with new ring: %v", err)
+	}
+	if claims.UserID != "user-abc" {
+		t.Errorf("UserID: got %q", claims.UserID)
+	}
+}
+
+func TestLoadAllMultipleKeys(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	// Generate two keys.
+	_, err := LoadAll(dir) // first key
+	if err != nil {
+		t.Fatalf("first LoadAll: %v", err)
+	}
+	time.Sleep(time.Millisecond)
+	ring, err := Rotate(dir) // second key
+	if err != nil {
+		t.Fatalf("Rotate: %v", err)
+	}
+
+	if len(ring.Keys) != 2 {
+		t.Errorf("expected 2 keys, got %d", len(ring.Keys))
+	}
+
+	// Current should be the newest (lexicographically last KID).
+	for i := 1; i < len(ring.Keys); i++ {
+		if ring.Keys[i].KID > ring.Keys[i-1].KID {
+			t.Errorf("keys not sorted newest-first: %s > %s", ring.Keys[i].KID, ring.Keys[i-1].KID)
+		}
+	}
+}
+
 // ── JWKS handler ──────────────────────────────────────────────────────────────
 
 func TestJWKSHandler(t *testing.T) {
@@ -377,8 +449,8 @@ func TestJWKSHandler(t *testing.T) {
 	if !strings.Contains(body, `"keys"`) {
 		t.Errorf("body missing 'keys': %s", body)
 	}
-	if !strings.Contains(body, keys.KID) {
-		t.Errorf("body missing KID %q: %s", keys.KID, body)
+	if !strings.Contains(body, keys.Current.KID) {
+		t.Errorf("body missing KID %q: %s", keys.Current.KID, body)
 	}
 	if !strings.Contains(body, `"OKP"`) {
 		t.Errorf("body missing OKP key type: %s", body)

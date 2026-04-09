@@ -28,6 +28,8 @@ func main() {
 		err = runUsers(os.Args[2:])
 	case "directory":
 		err = runDirectory(os.Args[2:])
+	case "keys":
+		err = runKeys(os.Args[2:])
 	case "version":
 		fmt.Printf("bouncing %s (%s) built %s go%s\n", version, commit, date, runtime.Version())
 		return
@@ -57,5 +59,7 @@ Usage:
   bouncing users list            List all users
   bouncing users import <file>   Bulk import from CSV
   bouncing directory sync        Sync users from directory provider
+  bouncing keys rotate           Generate a new signing keypair
+  bouncing keys list             List all signing keys
   bouncing version               Print version information`)
 }

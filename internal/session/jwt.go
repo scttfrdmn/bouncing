@@ -22,19 +22,21 @@ type Claims struct {
 
 // Issuer signs and verifies access tokens.
 type Issuer struct {
-	keys *KeySet
+	ring *KeyRing
 	ttl  time.Duration
 	iss  string // base URL (issuer claim)
 }
 
-// NewIssuer creates an Issuer with the given keys, TTL, and issuer URL.
-func NewIssuer(keys *KeySet, ttl time.Duration, iss string) *Issuer {
-	return &Issuer{keys: keys, ttl: ttl, iss: iss}
+// NewIssuer creates an Issuer with the given key ring, TTL, and issuer URL.
+func NewIssuer(ring *KeyRing, ttl time.Duration, iss string) *Issuer {
+	return &Issuer{ring: ring, ttl: ttl, iss: iss}
 }
 
-// Issue creates a signed JWT for the given claims.
+// Issue creates a signed JWT for the given claims. Signs with the current
+// (newest) key in the ring.
 func (i *Issuer) Issue(_ context.Context, c Claims) (string, error) {
 	now := time.Now()
+	key := i.ring.Current
 
 	b := jwt.NewBuilder().
 		Issuer(i.iss).
@@ -47,31 +49,41 @@ func (i *Issuer) Issue(_ context.Context, c Claims) (string, error) {
 		Claim("roles", c.Roles).
 		Claim("permissions", c.Permissions).
 		Claim("org_id", c.OrgID).
-		Claim("kid", i.keys.KID)
+		Claim("kid", key.KID)
 
 	token, err := b.Build()
 	if err != nil {
 		return "", fmt.Errorf("session.Issue: build: %w", err)
 	}
 
-	signed, err := jwt.Sign(token, jwt.WithKey(jwa.EdDSA(), i.keys.Private))
+	signed, err := jwt.Sign(token, jwt.WithKey(jwa.EdDSA(), key.Private))
 	if err != nil {
 		return "", fmt.Errorf("session.Issue: sign: %w", err)
 	}
 	return string(signed), nil
 }
 
-// Verify parses and validates a signed JWT, returning the Claims on success.
+// Verify parses and validates a signed JWT, trying all keys in the ring.
+// This allows tokens signed by rotated-out keys to still be verified during
+// the grace period.
 func (i *Issuer) Verify(_ context.Context, tokenStr string) (*Claims, error) {
-	token, err := jwt.Parse(
-		[]byte(tokenStr),
-		jwt.WithKey(jwa.EdDSA(), i.keys.Public),
-		jwt.WithValidate(true),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("session.Verify: %w", err)
+	var lastErr error
+	for _, key := range i.ring.Keys {
+		token, err := jwt.Parse(
+			[]byte(tokenStr),
+			jwt.WithKey(jwa.EdDSA(), key.Public),
+			jwt.WithValidate(true),
+		)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		return extractClaims(token), nil
 	}
+	return nil, fmt.Errorf("session.Verify: %w", lastErr)
+}
 
+func extractClaims(token jwt.Token) *Claims {
 	c := &Claims{}
 	c.UserID, _ = token.Subject()
 
@@ -102,7 +114,7 @@ func (i *Issuer) Verify(_ context.Context, tokenStr string) (*Claims, error) {
 		}
 	}
 
-	return c, nil
+	return c
 }
 
 func toStringSlice(v any) []string {
