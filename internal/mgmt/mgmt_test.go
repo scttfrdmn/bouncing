@@ -272,6 +272,110 @@ func TestAssignRole(t *testing.T) {
 	}
 }
 
+// ── UpdateRole ───────────────────────────────────────────────────────────
+
+func TestUpdateRole(t *testing.T) {
+	t.Parallel()
+	h, db := newTestHandler(t)
+	ctx := context.Background()
+
+	role := &store.Role{Name: "writer", Permissions: []string{"write"}}
+	_ = db.CreateRole(ctx, role)
+
+	newName := "author"
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("PUT", "/manage/roles/"+role.ID,
+		jsonBody(map[string]any{"name": &newName, "permissions": []string{"write", "publish"}}))
+	r.Header.Set("Content-Type", "application/json")
+	r.SetPathValue("id", role.ID)
+	h.UpdateRole(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status: got %d; body: %s", w.Code, w.Body.String())
+	}
+
+	updated, _ := db.GetRole(ctx, role.ID)
+	if updated.Name != "author" {
+		t.Errorf("name: got %q, want author", updated.Name)
+	}
+	if len(updated.Permissions) != 2 {
+		t.Errorf("permissions: got %v", updated.Permissions)
+	}
+}
+
+func TestUpdateRoleNotFound(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler(t)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("PUT", "/manage/roles/nonexistent",
+		jsonBody(map[string]any{"name": "x"}))
+	r.Header.Set("Content-Type", "application/json")
+	r.SetPathValue("id", "nonexistent")
+	h.UpdateRole(w, r)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status: got %d, want 404", w.Code)
+	}
+}
+
+// ── DeleteRoleByID ───────────────────────────────────────────────────────
+
+func TestDeleteRoleByID(t *testing.T) {
+	t.Parallel()
+	h, db := newTestHandler(t)
+	ctx := context.Background()
+
+	role := &store.Role{Name: "disposable", Permissions: []string{"none"}}
+	_ = db.CreateRole(ctx, role)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("DELETE", "/manage/roles/"+role.ID, nil)
+	r.SetPathValue("id", role.ID)
+	h.DeleteRoleByID(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status: got %d", w.Code)
+	}
+
+	_, err := db.GetRole(ctx, role.ID)
+	if err == nil {
+		t.Error("role still exists after delete")
+	}
+}
+
+// ── ListUserRoles ────────────────────────────────────────────────────────
+
+func TestListUserRoles(t *testing.T) {
+	t.Parallel()
+	h, db := newTestHandler(t)
+	ctx := context.Background()
+
+	u := &store.User{Email: "roles@example.com", Status: "active"}
+	_ = db.CreateUser(ctx, u)
+	r1 := &store.Role{Name: "admin", Permissions: []string{"*"}}
+	_ = db.CreateRole(ctx, r1)
+	r2 := &store.Role{Name: "editor", Permissions: []string{"write"}}
+	_ = db.CreateRole(ctx, r2)
+	_ = db.AssignRole(ctx, u.ID, r1.ID, nil)
+	_ = db.AssignRole(ctx, u.ID, r2.ID, nil)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/manage/users/"+u.ID+"/roles", nil)
+	req.SetPathValue("id", u.ID)
+	h.ListUserRoles(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status: got %d", w.Code)
+	}
+	var body map[string]any
+	_ = json.NewDecoder(w.Body).Decode(&body)
+	roles := body["roles"].([]any)
+	if len(roles) != 2 {
+		t.Errorf("expected 2 roles, got %d", len(roles))
+	}
+}
+
 // ── ListAgreements ────────────────────────────────────────────────────────────
 
 func TestListAgreements(t *testing.T) {

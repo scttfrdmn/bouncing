@@ -320,6 +320,100 @@ func (h *Handler) CreateRole(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, role)
 }
 
+// UpdateRole handles PUT /manage/roles/{id}
+func (h *Handler) UpdateRole(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	roleID := r.PathValue("id")
+	if roleID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "role id required")
+		return
+	}
+
+	existing, err := h.store.GetRole(ctx, roleID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "not_found", "role not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
+		return
+	}
+
+	var req struct {
+		Name        *string  `json:"name"`
+		Permissions []string `json:"permissions"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "invalid JSON")
+		return
+	}
+
+	if req.Name != nil {
+		existing.Name = *req.Name
+	}
+	if req.Permissions != nil {
+		sort.Strings(req.Permissions)
+		existing.Permissions = dedupeStrings(req.Permissions)
+	}
+
+	if err := h.store.UpdateRole(ctx, existing); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, existing)
+}
+
+// DeleteRoleByID handles DELETE /manage/roles/{id}
+func (h *Handler) DeleteRoleByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	roleID := r.PathValue("id")
+	if roleID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "role id required")
+		return
+	}
+
+	if err := h.store.DeleteRole(ctx, roleID); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"deleted": true})
+}
+
+// ListUserRoles handles GET /manage/users/{id}/roles
+func (h *Handler) ListUserRoles(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID := r.PathValue("id")
+	if userID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "user id required")
+		return
+	}
+
+	userRoles, err := h.store.GetUserRoles(ctx, userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
+		return
+	}
+
+	// Resolve role names for the response.
+	type roleInfo struct {
+		RoleID string  `json:"role_id"`
+		Name   string  `json:"name"`
+		OrgID  *string `json:"org_id"`
+	}
+	var roles []roleInfo
+	for _, ur := range userRoles {
+		name := ur.RoleID
+		if role, err := h.store.GetRole(ctx, ur.RoleID); err == nil {
+			name = role.Name
+		}
+		roles = append(roles, roleInfo{RoleID: ur.RoleID, Name: name, OrgID: ur.OrgID})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"roles": roles})
+}
+
 // ListAgreements handles GET /manage/users/{id}/agreements
 func (h *Handler) ListAgreements(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

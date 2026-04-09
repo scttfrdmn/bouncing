@@ -58,6 +58,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mgmt.HandleFunc("DELETE /manage/users/{id}/roles/{role_id}", s.mgmtHandler.RevokeRole)
 	mgmt.HandleFunc("GET /manage/roles", s.mgmtHandler.ListRoles)
 	mgmt.HandleFunc("POST /manage/roles", s.mgmtHandler.CreateRole)
+	mgmt.HandleFunc("PUT /manage/roles/{id}", s.mgmtHandler.UpdateRole)
+	mgmt.HandleFunc("DELETE /manage/roles/{id}", s.mgmtHandler.DeleteRoleByID)
+	mgmt.HandleFunc("GET /manage/users/{id}/roles", s.mgmtHandler.ListUserRoles)
 	mgmt.HandleFunc("GET /manage/users/{id}/agreements", s.mgmtHandler.ListAgreements)
 
 	// ── Org routes ────────────────────────────────────────────────────────────
