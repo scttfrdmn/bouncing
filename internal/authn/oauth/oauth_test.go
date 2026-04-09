@@ -1,11 +1,12 @@
 package oauth
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/h2non/gock"
 )
 
 // ── StateManager ──────────────────────────────────────────────────────────────
@@ -176,84 +177,132 @@ func TestFetchAppleMalformedIDToken(t *testing.T) {
 	}
 }
 
-// ── Provider fetcher tests with mock HTTP servers ─────────────────────────
+// ── Provider fetcher tests with gock ──────────────────────────────────────
 
-func TestFetchGoogle(t *testing.T) {
-	t.Parallel()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]string{
+func TestFetchGoogleGock(t *testing.T) {
+	defer gock.Off()
+	gock.New("https://www.googleapis.com").
+		Get("/oauth2/v3/userinfo").
+		Reply(200).
+		JSON(map[string]string{
 			"sub":     "google-123",
 			"email":   "alice@gmail.com",
 			"name":    "Alice",
 			"picture": "https://photo.example.com/alice.jpg",
 		})
-	}))
-	defer srv.Close()
 
-	// fetchGoogle uses a fixed URL, so we override by calling directly with the mock server's client.
-	// Instead, test the response parsing by calling the handler directly.
-	resp, err := srv.Client().Get(srv.URL)
+	info, err := fetchGoogle(http.DefaultClient)
 	if err != nil {
-		t.Fatalf("GET: %v", err)
+		t.Fatalf("fetchGoogle: %v", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
-
-	// Verify the mock server returns parseable JSON.
-	var v struct {
-		Sub   string `json:"sub"`
-		Email string `json:"email"`
+	if info.ProviderID != "google-123" {
+		t.Errorf("ProviderID: got %q", info.ProviderID)
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
-		t.Fatalf("decode: %v", err)
+	if info.Email != "alice@gmail.com" {
+		t.Errorf("Email: got %q", info.Email)
 	}
-	if v.Sub != "google-123" || v.Email != "alice@gmail.com" {
-		t.Errorf("unexpected: %+v", v)
+	if info.Name != "Alice" {
+		t.Errorf("Name: got %q", info.Name)
+	}
+	if info.AvatarURL != "https://photo.example.com/alice.jpg" {
+		t.Errorf("AvatarURL: got %q", info.AvatarURL)
 	}
 }
 
-func TestFetchGitHubWithPrimaryEmail(t *testing.T) {
-	t.Parallel()
-	mux := http.NewServeMux()
-	mux.HandleFunc("/user", func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]any{
+func TestFetchGitHubGock(t *testing.T) {
+	defer gock.Off()
+	gock.New("https://api.github.com").
+		Get("/user").
+		Reply(200).
+		JSON(map[string]any{
 			"id":         42,
 			"login":      "alice",
 			"name":       "Alice Smith",
+			"email":      "",
 			"avatar_url": "https://avatars.example.com/42",
 		})
-	})
-	mux.HandleFunc("/user/emails", func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode([]map[string]any{
+	gock.New("https://api.github.com").
+		Get("/user/emails").
+		Reply(200).
+		JSON([]map[string]any{
 			{"email": "alice@work.com", "primary": false, "verified": true},
 			{"email": "alice@home.com", "primary": true, "verified": true},
 		})
-	})
 
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	// Verify mock returns correct structure.
-	resp, err := srv.Client().Get(srv.URL + "/user")
+	info, err := fetchGitHub(http.DefaultClient)
 	if err != nil {
-		t.Fatalf("GET /user: %v", err)
+		t.Fatalf("fetchGitHub: %v", err)
 	}
-	_ = resp.Body.Close()
+	if info.ProviderID != "42" {
+		t.Errorf("ProviderID: got %q", info.ProviderID)
+	}
+	if info.Email != "alice@home.com" {
+		t.Errorf("Email: got %q, want alice@home.com (primary)", info.Email)
+	}
+	if info.Name != "Alice Smith" {
+		t.Errorf("Name: got %q", info.Name)
+	}
+}
 
-	resp2, err := srv.Client().Get(srv.URL + "/user/emails")
+func TestFetchGitHubWithInlineEmail(t *testing.T) {
+	defer gock.Off()
+	gock.New("https://api.github.com").
+		Get("/user").
+		Reply(200).
+		JSON(map[string]any{
+			"id":    99,
+			"login": "bob",
+			"name":  "",
+			"email": "bob@github.com",
+		})
+
+	info, err := fetchGitHub(http.DefaultClient)
 	if err != nil {
-		t.Fatalf("GET /user/emails: %v", err)
+		t.Fatalf("fetchGitHub: %v", err)
 	}
-	defer func() { _ = resp2.Body.Close() }()
+	if info.Email != "bob@github.com" {
+		t.Errorf("Email: got %q, want bob@github.com", info.Email)
+	}
+	if info.Name != "bob" {
+		t.Errorf("Name: got %q, want login fallback 'bob'", info.Name)
+	}
+}
 
-	var emails []struct {
-		Email   string `json:"email"`
-		Primary bool   `json:"primary"`
+func TestFetchMicrosoftGock(t *testing.T) {
+	defer gock.Off()
+	gock.New("https://graph.microsoft.com").
+		Get("/v1.0/me").
+		Reply(200).
+		JSON(map[string]string{
+			"id":                "ms-456",
+			"displayName":       "Carol",
+			"userPrincipalName": "carol@contoso.com",
+			"mail":              "carol@contoso.com",
+		})
+
+	info, err := fetchMicrosoft(http.DefaultClient)
+	if err != nil {
+		t.Fatalf("fetchMicrosoft: %v", err)
 	}
-	if err := json.NewDecoder(resp2.Body).Decode(&emails); err != nil {
-		t.Fatalf("decode: %v", err)
+	if info.ProviderID != "ms-456" {
+		t.Errorf("ProviderID: got %q", info.ProviderID)
 	}
-	if len(emails) != 2 {
-		t.Errorf("emails: got %d, want 2", len(emails))
+	if info.Email != "carol@contoso.com" {
+		t.Errorf("Email: got %q", info.Email)
+	}
+}
+
+func TestFetchGoogleError(t *testing.T) {
+	defer gock.Off()
+	gock.New("https://www.googleapis.com").
+		Get("/oauth2/v3/userinfo").
+		Reply(500).
+		BodyString("internal error")
+
+	// fetchGoogle reads the body regardless of status — but the JSON parse will fail.
+	_, err := fetchGoogle(http.DefaultClient)
+	if err == nil {
+		t.Error("expected error for invalid JSON response")
 	}
 }
 
