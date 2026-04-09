@@ -188,6 +188,63 @@ func TestSyncProviderError(t *testing.T) {
 	}
 }
 
+func TestSyncMixedResults(t *testing.T) {
+	t.Parallel()
+	existing := &store.User{ID: "u1", Email: "active@acme.com", Status: "active"}
+	p := &mockProvider{users: []*DirectoryUser{
+		{Email: "new@acme.com", Name: "New User"},                     // create
+		{Email: "active@acme.com", Name: "Active", Suspended: true},   // suspend
+		{Email: "unknown@acme.com", Name: "Unknown", Suspended: false}, // create
+	}}
+	st := newMockStore(existing)
+	h := &mockHooks{}
+	syncer := newSyncer(p, st, h, "open")
+
+	result, err := syncer.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if result.Created != 2 {
+		t.Errorf("Created: got %d, want 2", result.Created)
+	}
+	if result.Updated != 1 {
+		t.Errorf("Updated: got %d, want 1", result.Updated)
+	}
+	if st.users["active@acme.com"].Status != "suspended" {
+		t.Errorf("status: got %q, want suspended", st.users["active@acme.com"].Status)
+	}
+}
+
+func TestSyncNilHooks(t *testing.T) {
+	t.Parallel()
+	p := &mockProvider{users: []*DirectoryUser{
+		{Email: "nohooks@acme.com"},
+	}}
+	st := newMockStore()
+	syncer := newSyncer(p, st, nil, "open")
+
+	result, err := syncer.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if result.Created != 1 {
+		t.Errorf("Created: got %d, want 1", result.Created)
+	}
+}
+
+func TestNewGoogleProviderBadFile(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	_, err := NewGoogleProvider(ctx, &config.DirectoryConfig{
+		Domain:         "acme.com",
+		ServiceAccount: "/nonexistent/path/sa.json",
+		AdminEmail:     "admin@acme.com",
+	})
+	if err == nil {
+		t.Error("expected error for nonexistent service account file")
+	}
+}
+
 func TestNewGoogleProviderValidation(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

@@ -306,6 +306,52 @@ func TestFetchGoogleError(t *testing.T) {
 	}
 }
 
+func TestFetchGitHubNoPrimaryEmail(t *testing.T) {
+	defer gock.Off()
+	gock.New("https://api.github.com").
+		Get("/user").
+		Reply(200).
+		JSON(map[string]any{
+			"id":    55,
+			"login": "noemail",
+			"name":  "No Email",
+			"email": "",
+		})
+	gock.New("https://api.github.com").
+		Get("/user/emails").
+		Reply(200).
+		JSON([]map[string]any{
+			{"email": "unverified@test.com", "primary": true, "verified": false},
+			{"email": "notprimary@test.com", "primary": false, "verified": true},
+		})
+
+	_, err := fetchGitHub(http.DefaultClient)
+	if err == nil {
+		t.Error("expected error when no primary verified email")
+	}
+}
+
+func TestFetchMicrosoftMailEmpty(t *testing.T) {
+	defer gock.Off()
+	gock.New("https://graph.microsoft.com").
+		Get("/v1.0/me").
+		Reply(200).
+		JSON(map[string]string{
+			"id":                "ms-789",
+			"displayName":       "UPN User",
+			"userPrincipalName": "upn@contoso.com",
+			"mail":              "",
+		})
+
+	info, err := fetchMicrosoft(http.DefaultClient)
+	if err != nil {
+		t.Fatalf("fetchMicrosoft: %v", err)
+	}
+	if info.Email != "upn@contoso.com" {
+		t.Errorf("Email fallback: got %q, want upn@contoso.com", info.Email)
+	}
+}
+
 // ── BeginOAuth sets a redirect ────────────────────────────────────────────────
 
 func TestBeginOAuthRedirects(t *testing.T) {

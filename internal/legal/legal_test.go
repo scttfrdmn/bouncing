@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/scttfrdmn/bouncing/internal/config"
@@ -141,5 +142,94 @@ func TestRecord(t *testing.T) {
 	// NeedsAcceptance should now return false.
 	if g.NeedsAcceptance(ctx, u.ID) {
 		t.Error("expected NeedsAcceptance=false after Record")
+	}
+}
+
+// ── Accessor methods ─────────────────────────────────────────────────────────
+
+func TestDocumentAccessors(t *testing.T) {
+	t.Parallel()
+	g, _ := newTestGate(t)
+
+	if g.DocumentURL() != "https://example.com/tos" {
+		t.Errorf("DocumentURL: got %q", g.DocumentURL())
+	}
+	if g.DocumentLabel() != "Terms of Service" {
+		t.Errorf("DocumentLabel: got %q", g.DocumentLabel())
+	}
+	if g.Version() != "1.0" {
+		t.Errorf("Version: got %q", g.Version())
+	}
+}
+
+// ── ClearPendingCookie ───────────────────────────────────────────────────────
+
+func TestClearPendingCookie(t *testing.T) {
+	t.Parallel()
+	g, _ := newTestGate(t)
+
+	// Issue a cookie.
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/auth/agree", nil)
+	_ = g.IssuePendingCookie(w, r, "user-clear")
+
+	// Clear it.
+	w2 := httptest.NewRecorder()
+	r2 := httptest.NewRequest("GET", "/auth/agree", nil)
+	g.ClearPendingCookie(w2, r2)
+
+	// The clear cookie should have MaxAge=-1.
+	for _, c := range w2.Result().Cookies() {
+		if c.Name == "bouncing_pending" && c.MaxAge != -1 {
+			t.Errorf("expected MaxAge=-1, got %d", c.MaxAge)
+		}
+	}
+}
+
+// ── ShowAgreement handler ────────────────────────────────────────────────────
+
+func TestShowAgreementRendersHTML(t *testing.T) {
+	t.Parallel()
+	g, db := newTestGate(t)
+
+	h := NewHandler(g, nil, nil, db, nil, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	// Issue a pending cookie first.
+	wCookie := httptest.NewRecorder()
+	rCookie := httptest.NewRequest("GET", "/auth/agree", nil)
+	_ = g.IssuePendingCookie(wCookie, rCookie, "user-show")
+
+	// Build request with the pending cookie.
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/auth/agree", nil)
+	for _, c := range wCookie.Result().Cookies() {
+		r.AddCookie(c)
+	}
+
+	h.ShowAgreement(w, r)
+
+	if w.Code != 200 {
+		t.Errorf("status: got %d, want 200", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "https://example.com/tos") {
+		t.Error("HTML missing document URL")
+	}
+	if !strings.Contains(body, "Terms of Service") {
+		t.Error("HTML missing document label")
+	}
+}
+
+func TestShowAgreementNoCookie(t *testing.T) {
+	t.Parallel()
+	g, db := newTestGate(t)
+	h := NewHandler(g, nil, nil, db, nil, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/auth/agree", nil)
+	h.ShowAgreement(w, r)
+
+	if w.Code != 400 {
+		t.Errorf("status: got %d, want 400", w.Code)
 	}
 }

@@ -2,10 +2,13 @@ package webauthn
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	gowa "github.com/go-webauthn/webauthn/webauthn"
+
+	"github.com/scttfrdmn/bouncing/internal/store"
 )
 
 // ── SessionStore ──────────────────────────────────────────────────────────────
@@ -130,5 +133,95 @@ func TestULIDFromBytesInvalidLength(t *testing.T) {
 	_, err := ulidFromBytes([]byte("tooshort"))
 	if err == nil {
 		t.Error("expected error for wrong-length bytes")
+	}
+}
+
+// ── WebAuthn adapter tests ───────────────────────────────────────────────────
+
+func TestWebAuthnCredentials(t *testing.T) {
+	t.Parallel()
+	creds := []*store.WebAuthnCredential{
+		{ID: "cred-1", PublicKey: []byte("pk1"), SignCount: 5},
+		{ID: "cred-2", PublicKey: []byte("pk2"), SignCount: 10},
+	}
+	u := newWebAuthnUser(newTestUser("01JTEST0000000000000000001"), creds)
+
+	got := u.WebAuthnCredentials()
+	if len(got) != 2 {
+		t.Fatalf("credentials: got %d, want 2", len(got))
+	}
+	if string(got[0].PublicKey) != "pk1" {
+		t.Errorf("cred[0] public key: got %q", got[0].PublicKey)
+	}
+	if got[1].Authenticator.SignCount != 10 {
+		t.Errorf("cred[1] sign count: got %d", got[1].Authenticator.SignCount)
+	}
+}
+
+func TestWebAuthnCredentialsEmpty(t *testing.T) {
+	t.Parallel()
+	u := newWebAuthnUser(newTestUser("01JTEST0000000000000000002"), nil)
+	got := u.WebAuthnCredentials()
+	if len(got) != 0 {
+		t.Errorf("expected 0 credentials, got %d", len(got))
+	}
+}
+
+func TestWebAuthnNameIsEmail(t *testing.T) {
+	t.Parallel()
+	u := newWebAuthnUser(newTestUser("01JTEST0000000000000000003"), nil)
+	if u.WebAuthnName() != u.user.Email {
+		t.Errorf("WebAuthnName: got %q, want %q", u.WebAuthnName(), u.user.Email)
+	}
+}
+
+func TestWebAuthnDisplayNameFallback(t *testing.T) {
+	t.Parallel()
+	user := newTestUser("01JTEST0000000000000000004")
+	user.Name = ""
+	u := newWebAuthnUser(user, nil)
+	if u.WebAuthnDisplayName() != user.Email {
+		t.Errorf("DisplayName fallback: got %q, want %q", u.WebAuthnDisplayName(), user.Email)
+	}
+}
+
+func TestSessionStoreExpiredLoadReturnsNil(t *testing.T) {
+	t.Parallel()
+	stop := make(chan struct{})
+	defer close(stop)
+	s := NewSessionStore(stop)
+
+	// Insert an expired entry directly.
+	s.mu.Lock()
+	s.entries["expired-cleanup"] = &sessionEntry{
+		data:      &gowa.SessionData{Challenge: "test"},
+		expiresAt: time.Now().Add(-1 * time.Minute),
+	}
+	s.mu.Unlock()
+
+	// Load should return nil for expired entries (checked at load time).
+	if s.Load("expired-cleanup") != nil {
+		t.Error("expected nil for expired entry on Load")
+	}
+}
+
+func TestSessionStoreConcurrent(t *testing.T) {
+	t.Parallel()
+	stop := make(chan struct{})
+	defer close(stop)
+	s := NewSessionStore(stop)
+
+	// Concurrent Save/Load should not panic.
+	done := make(chan struct{})
+	for i := 0; i < 10; i++ {
+		go func(n int) {
+			key := fmt.Sprintf("user-%d", n)
+			s.Save(key, &gowa.SessionData{Challenge: key})
+			_ = s.Load(key)
+			done <- struct{}{}
+		}(i)
+	}
+	for i := 0; i < 10; i++ {
+		<-done
 	}
 }

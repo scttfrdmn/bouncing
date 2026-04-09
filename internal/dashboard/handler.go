@@ -28,19 +28,33 @@ func StaticFS() fs.FS {
 // Handler serves the management dashboard pages.
 type Handler struct {
 	store store.Store
-	tmpl  *template.Template
+	pages map[string]*template.Template // page name → parsed template (layout + page + partials)
 	log   *slog.Logger
 }
 
-// NewHandler creates a dashboard Handler with parsed templates.
+// NewHandler creates a dashboard Handler with per-page parsed templates.
+// Each page template is parsed together with layout.html and all partials,
+// so each page has its own definition of {{define "content"}}.
 func NewHandler(st store.Store, log *slog.Logger) *Handler {
 	funcMap := template.FuncMap{
 		"joinPerms": func(perms []string) string { return strings.Join(perms, ", ") },
 	}
-	tmpl := template.Must(template.New("").Funcs(funcMap).ParseFS(templateFiles,
-		"templates/*.html", "templates/partials/*.html",
-	))
-	return &Handler{store: st, tmpl: tmpl, log: log}
+
+	pages := map[string]*template.Template{}
+	pageNames := []string{"users", "user_detail", "roles", "orgs", "webhooks", "audit"}
+
+	for _, name := range pageNames {
+		t := template.Must(
+			template.New("").Funcs(funcMap).ParseFS(templateFiles,
+				"templates/layout.html",
+				"templates/"+name+".html",
+				"templates/partials/*.html",
+			),
+		)
+		pages[name] = t
+	}
+
+	return &Handler{store: st, pages: pages, log: log}
 }
 
 // ── Page handlers (full HTML) ────────────────────────────────────────────────
@@ -62,7 +76,7 @@ func (h *Handler) Users(w http.ResponseWriter, r *http.Request) {
 	}
 	total, _ := h.store.CountUsers(r.Context(), opts)
 
-	h.render(w, "layout", map[string]any{
+	h.render(w, "users", map[string]any{
 		"Title":  "Users",
 		"Nav":    "users",
 		"Users":  users,
@@ -101,7 +115,7 @@ func (h *Handler) UserDetail(w http.ResponseWriter, r *http.Request) {
 	allRoles, _ := h.store.ListRoles(ctx)
 	agreements, _ := h.store.ListTOSAcceptances(ctx, id)
 
-	h.render(w, "layout", map[string]any{
+	h.render(w, "user_detail", map[string]any{
 		"Title":          u.Email,
 		"Nav":            "users",
 		"User":           u,
@@ -118,7 +132,7 @@ func (h *Handler) Roles(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, "list roles", err)
 		return
 	}
-	h.render(w, "layout", map[string]any{
+	h.render(w, "roles", map[string]any{
 		"Title": "Roles",
 		"Nav":   "roles",
 		"Roles": roles,
@@ -132,7 +146,7 @@ func (h *Handler) Orgs(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, "list orgs", err)
 		return
 	}
-	h.render(w, "layout", map[string]any{
+	h.render(w, "orgs", map[string]any{
 		"Title": "Organizations",
 		"Nav":   "orgs",
 		"Orgs":  orgs,
@@ -146,7 +160,7 @@ func (h *Handler) Webhooks(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, "list webhooks", err)
 		return
 	}
-	h.render(w, "layout", map[string]any{
+	h.render(w, "webhooks", map[string]any{
 		"Title":    "Webhooks",
 		"Nav":      "webhooks",
 		"Webhooks": webhooks,
@@ -169,7 +183,7 @@ func (h *Handler) Audit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.render(w, "layout", map[string]any{
+	h.render(w, "audit", map[string]any{
 		"Title":   "Audit Log",
 		"Nav":     "audit",
 		"Entries": entries,
@@ -289,18 +303,31 @@ func (h *Handler) DeleteWebhook(w http.ResponseWriter, r *http.Request) {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-func (h *Handler) render(w http.ResponseWriter, name string, data any) {
+func (h *Handler) render(w http.ResponseWriter, page string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.tmpl.ExecuteTemplate(w, name, data); err != nil {
-		h.log.Error("dashboard: render", "template", name, "err", err)
+	tmpl, ok := h.pages[page]
+	if !ok {
+		h.log.Error("dashboard: unknown page", "page", page)
+		http.Error(w, "page not found", http.StatusInternalServerError)
+		return
+	}
+	if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
+		h.log.Error("dashboard: render", "page", page, "err", err)
 	}
 }
 
 func (h *Handler) renderPartial(w http.ResponseWriter, name string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.tmpl.ExecuteTemplate(w, name, data); err != nil {
-		h.log.Error("dashboard: render partial", "template", name, "err", err)
+	// Partials are available in any page template; pick the first one that has it.
+	for _, tmpl := range h.pages {
+		if t := tmpl.Lookup(name); t != nil {
+			if err := t.Execute(w, data); err != nil {
+				h.log.Error("dashboard: render partial", "name", name, "err", err)
+			}
+			return
+		}
 	}
+	h.log.Error("dashboard: partial not found", "name", name)
 }
 
 func (h *Handler) renderUserRolesSection(w http.ResponseWriter, r *http.Request, userID string) {
@@ -320,8 +347,8 @@ func (h *Handler) renderUserRolesSection(w http.ResponseWriter, r *http.Request,
 	}
 	allRoles, _ := h.store.ListRoles(ctx)
 
-	// Render just the roles section fragment.
-	h.render(w, "layout", map[string]any{
+	// Render the full user detail page as the HTMX response.
+	h.render(w, "user_detail", map[string]any{
 		"Title":          "User",
 		"Nav":            "users",
 		"User":           &store.User{ID: userID},
