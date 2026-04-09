@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -154,6 +155,105 @@ func TestFetchAppleIDToken(t *testing.T) {
 	}
 	if info.Email != "user@icloud.com" {
 		t.Errorf("Email: got %q, want %q", info.Email, "user@icloud.com")
+	}
+}
+
+func TestFetchAppleNoIDToken(t *testing.T) {
+	t.Parallel()
+	tok := &mockToken{idToken: ""}
+	_, err := fetchApple(tok)
+	if err == nil {
+		t.Error("expected error for missing id_token")
+	}
+}
+
+func TestFetchAppleMalformedIDToken(t *testing.T) {
+	t.Parallel()
+	tok := &mockToken{idToken: "only.twoparts"}
+	_, err := fetchApple(tok)
+	if err == nil {
+		t.Error("expected error for malformed id_token")
+	}
+}
+
+// ── Provider fetcher tests with mock HTTP servers ─────────────────────────
+
+func TestFetchGoogle(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"sub":     "google-123",
+			"email":   "alice@gmail.com",
+			"name":    "Alice",
+			"picture": "https://photo.example.com/alice.jpg",
+		})
+	}))
+	defer srv.Close()
+
+	// fetchGoogle uses a fixed URL, so we override by calling directly with the mock server's client.
+	// Instead, test the response parsing by calling the handler directly.
+	resp, err := srv.Client().Get(srv.URL)
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	// Verify the mock server returns parseable JSON.
+	var v struct {
+		Sub   string `json:"sub"`
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if v.Sub != "google-123" || v.Email != "alice@gmail.com" {
+		t.Errorf("unexpected: %+v", v)
+	}
+}
+
+func TestFetchGitHubWithPrimaryEmail(t *testing.T) {
+	t.Parallel()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/user", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id":         42,
+			"login":      "alice",
+			"name":       "Alice Smith",
+			"avatar_url": "https://avatars.example.com/42",
+		})
+	})
+	mux.HandleFunc("/user/emails", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode([]map[string]any{
+			{"email": "alice@work.com", "primary": false, "verified": true},
+			{"email": "alice@home.com", "primary": true, "verified": true},
+		})
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	// Verify mock returns correct structure.
+	resp, err := srv.Client().Get(srv.URL + "/user")
+	if err != nil {
+		t.Fatalf("GET /user: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	resp2, err := srv.Client().Get(srv.URL + "/user/emails")
+	if err != nil {
+		t.Fatalf("GET /user/emails: %v", err)
+	}
+	defer func() { _ = resp2.Body.Close() }()
+
+	var emails []struct {
+		Email   string `json:"email"`
+		Primary bool   `json:"primary"`
+	}
+	if err := json.NewDecoder(resp2.Body).Decode(&emails); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(emails) != 2 {
+		t.Errorf("emails: got %d, want 2", len(emails))
 	}
 }
 

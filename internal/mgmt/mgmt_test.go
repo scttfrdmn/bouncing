@@ -306,6 +306,96 @@ func TestListAgreements(t *testing.T) {
 	}
 }
 
+// ── RevokeRole ───────────────────────────────────────────────────────────
+
+func TestRevokeRole(t *testing.T) {
+	t.Parallel()
+	h, db := newTestHandler(t)
+	ctx := context.Background()
+
+	u := &store.User{Email: "revoke@example.com", Status: "active"}
+	_ = db.CreateUser(ctx, u)
+	role := &store.Role{Name: "temp", Permissions: []string{"read"}}
+	_ = db.CreateRole(ctx, role)
+	_ = db.AssignRole(ctx, u.ID, role.ID, nil)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("DELETE", "/manage/users/"+u.ID+"/roles/"+role.ID, nil)
+	r.SetPathValue("id", u.ID)
+	r.SetPathValue("role_id", role.ID)
+	h.RevokeRole(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status: got %d; body: %s", w.Code, w.Body.String())
+	}
+
+	roles, _ := db.GetUserRoles(ctx, u.ID)
+	if len(roles) != 0 {
+		t.Errorf("expected 0 roles after revoke, got %d", len(roles))
+	}
+}
+
+// ── ListUsers pagination + filters ───────────────────────────────────────
+
+func TestListUsersWithFilters(t *testing.T) {
+	t.Parallel()
+	h, db := newTestHandler(t)
+	ctx := context.Background()
+
+	_ = db.CreateUser(ctx, &store.User{Email: "active1@example.com", Status: "active"})
+	_ = db.CreateUser(ctx, &store.User{Email: "pending1@example.com", Status: "pending"})
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/manage/users?status=pending&per_page=10&page=1", nil)
+	h.ListUsers(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status: got %d", w.Code)
+	}
+	var body map[string]any
+	_ = json.NewDecoder(w.Body).Decode(&body)
+	users := body["users"].([]any)
+	for _, u := range users {
+		um := u.(map[string]any)
+		if um["status"] != "pending" {
+			t.Errorf("expected only pending users, got %v", um["status"])
+		}
+	}
+}
+
+// ── DeleteUser missing ID ────────────────────────────────────────────────
+
+func TestDeleteUserMissingID(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler(t)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("DELETE", "/manage/users/", nil)
+	r.SetPathValue("id", "")
+	h.DeleteUser(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", w.Code)
+	}
+}
+
+// ── CreateRole validation ────────────────────────────────────────────────
+
+func TestCreateRoleMissingName(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler(t)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "/manage/roles",
+		jsonBody(map[string]any{"name": "", "permissions": []string{"read"}}))
+	r.Header.Set("Content-Type", "application/json")
+	h.CreateRole(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", w.Code)
+	}
+}
+
 // ── Org CRUD ──────────────────────────────────────────────────────────────────
 
 func TestCreateListOrgs(t *testing.T) {
