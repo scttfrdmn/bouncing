@@ -737,6 +737,91 @@ func ptrToOrgID(orgID *string) string {
 	return *orgID
 }
 
+// ── Audit Log ────────────────────────────────────────────────────────────────
+
+func (s *SQLiteStore) CreateAuditEntry(ctx context.Context, e *AuditEntry) error {
+	if e.ID == "" {
+		e.ID = ulid.Make().String()
+	}
+	if e.Timestamp == 0 {
+		e.Timestamp = time.Now().Unix()
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO audit_entries (id, timestamp, actor_id, action, target_type, target_id, metadata, ip_address, request_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		e.ID, e.Timestamp, e.ActorID, e.Action, e.TargetType, e.TargetID, e.Metadata, e.IPAddress, e.RequestID,
+	)
+	if err != nil {
+		return fmt.Errorf("store.CreateAuditEntry: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) ListAuditEntries(ctx context.Context, opts AuditListOpts) ([]*AuditEntry, int64, error) {
+	where, args := buildAuditWhere(opts)
+	perPage := opts.PerPage
+	if perPage <= 0 {
+		perPage = 50
+	}
+	if perPage > 200 {
+		perPage = 200
+	}
+	page := opts.Page
+	if page <= 0 {
+		page = 1
+	}
+
+	// Count total.
+	var total int64
+	if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM audit_entries"+where, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("store.ListAuditEntries: count: %w", err)
+	}
+
+	// Fetch page.
+	query := "SELECT id, timestamp, actor_id, action, target_type, target_id, metadata, ip_address, request_id FROM audit_entries" + where + " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+	args = append(args, perPage, (page-1)*perPage)
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("store.ListAuditEntries: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var entries []*AuditEntry
+	for rows.Next() {
+		e := &AuditEntry{}
+		if err := rows.Scan(&e.ID, &e.Timestamp, &e.ActorID, &e.Action, &e.TargetType, &e.TargetID, &e.Metadata, &e.IPAddress, &e.RequestID); err != nil {
+			return nil, 0, fmt.Errorf("store.ListAuditEntries: scan: %w", err)
+		}
+		entries = append(entries, e)
+	}
+	return entries, total, nil
+}
+
+func buildAuditWhere(opts AuditListOpts) (string, []any) {
+	var clauses []string
+	var args []any
+	if opts.ActorID != "" {
+		clauses = append(clauses, "actor_id = ?")
+		args = append(args, opts.ActorID)
+	}
+	if opts.Action != "" {
+		clauses = append(clauses, "action = ?")
+		args = append(args, opts.Action)
+	}
+	if opts.Since > 0 {
+		clauses = append(clauses, "timestamp >= ?")
+		args = append(args, opts.Since)
+	}
+	if opts.Until > 0 {
+		clauses = append(clauses, "timestamp <= ?")
+		args = append(args, opts.Until)
+	}
+	if len(clauses) == 0 {
+		return "", nil
+	}
+	return " WHERE " + strings.Join(clauses, " AND "), args
+}
+
 // orgIDToPtr converts the storage representation back to *string:
 // "" → nil (global scope), non-empty → pointer to the value.
 func orgIDToPtr(s string) *string {

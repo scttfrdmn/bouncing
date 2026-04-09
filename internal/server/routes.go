@@ -66,6 +66,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mgmt.HandleFunc("POST /manage/orgs/{org_id}/members", s.mgmtHandler.AddOrgMember)
 	mgmt.HandleFunc("DELETE /manage/orgs/{org_id}/members/{uid}", s.mgmtHandler.RemoveOrgMember)
 
+	// ── Audit Log ─────────────────────────────────────────────────────────────
+	mgmt.HandleFunc("GET /manage/audit", s.mgmtHandler.ListAuditEntries)
+
 	// ── Webhook CRUD ──────────────────────────────────────────────────────────
 	mgmt.HandleFunc("GET /manage/webhooks", s.mgmtHandler.ListWebhooks)
 	mgmt.HandleFunc("POST /manage/webhooks", s.mgmtHandler.CreateWebhook)

@@ -509,3 +509,95 @@ func TestOrgMembershipRoundTrip(t *testing.T) {
 		t.Fatalf("RemoveOrgMember: %v", err)
 	}
 }
+
+// ── Audit Log ────────────────────────────────────────────────────────────────
+
+func TestAuditEntryRoundTrip(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	e := &AuditEntry{
+		ActorID:    "user-1",
+		Action:     "user.login",
+		TargetType: "user",
+		TargetID:   "user-1",
+		Metadata:   `{"method":"oauth:google"}`,
+		IPAddress:  "203.0.113.50",
+		RequestID:  "req-abc",
+	}
+	if err := s.CreateAuditEntry(ctx, e); err != nil {
+		t.Fatalf("CreateAuditEntry: %v", err)
+	}
+	if e.ID == "" {
+		t.Fatal("expected ID to be set")
+	}
+
+	entries, total, err := s.ListAuditEntries(ctx, AuditListOpts{})
+	if err != nil {
+		t.Fatalf("ListAuditEntries: %v", err)
+	}
+	if total != 1 {
+		t.Errorf("total: got %d, want 1", total)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("entries: got %d, want 1", len(entries))
+	}
+	got := entries[0]
+	if got.Action != "user.login" {
+		t.Errorf("Action: got %q", got.Action)
+	}
+	if got.ActorID != "user-1" {
+		t.Errorf("ActorID: got %q", got.ActorID)
+	}
+	if got.IPAddress != "203.0.113.50" {
+		t.Errorf("IPAddress: got %q", got.IPAddress)
+	}
+}
+
+func TestAuditEntryFilters(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	now := time.Now().Unix()
+	for _, e := range []*AuditEntry{
+		{ActorID: "user-1", Action: "user.login", Timestamp: now - 100},
+		{ActorID: "user-2", Action: "user.created", Timestamp: now - 50},
+		{ActorID: "user-1", Action: "role.assigned", Timestamp: now},
+	} {
+		if err := s.CreateAuditEntry(ctx, e); err != nil {
+			t.Fatalf("CreateAuditEntry: %v", err)
+		}
+	}
+
+	// Filter by actor.
+	entries, total, _ := s.ListAuditEntries(ctx, AuditListOpts{ActorID: "user-1"})
+	if total != 2 {
+		t.Errorf("actor filter: total got %d, want 2", total)
+	}
+	if len(entries) != 2 {
+		t.Errorf("actor filter: entries got %d, want 2", len(entries))
+	}
+
+	// Filter by action.
+	entries, total, _ = s.ListAuditEntries(ctx, AuditListOpts{Action: "user.created"})
+	if total != 1 {
+		t.Errorf("action filter: total got %d, want 1", total)
+	}
+	if len(entries) != 1 || entries[0].ActorID != "user-2" {
+		t.Errorf("action filter: unexpected entries: %+v", entries)
+	}
+
+	// Filter by time range.
+	_, total, _ = s.ListAuditEntries(ctx, AuditListOpts{Since: now - 60, Until: now - 40})
+	if total != 1 {
+		t.Errorf("time filter: total got %d, want 1", total)
+	}
+
+	// Pagination.
+	entries, _, _ = s.ListAuditEntries(ctx, AuditListOpts{PerPage: 1, Page: 1})
+	if len(entries) != 1 {
+		t.Errorf("pagination: got %d, want 1", len(entries))
+	}
+}

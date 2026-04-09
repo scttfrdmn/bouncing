@@ -42,6 +42,12 @@ type Webhook = istore.Webhook
 // TOSAcceptance records a user's acceptance of a terms-of-service version.
 type TOSAcceptance = istore.TOSAcceptance
 
+// AuditEntry records a single auditable action.
+type AuditEntry = istore.AuditEntry
+
+// AuditListOpts controls filtering and pagination for audit queries.
+type AuditListOpts = istore.AuditListOpts
+
 // ErrNotFound is returned by store lookups when the record does not exist.
 var ErrNotFound = istore.ErrNotFound //nolint:gochecknoglobals
 

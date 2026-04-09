@@ -464,6 +464,34 @@ func (h *Handler) DeleteWebhook(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": true})
 }
 
+// ── Audit Log ─────────────────────────────────────────────────────────────
+
+// ListAuditEntries handles GET /manage/audit
+func (h *Handler) ListAuditEntries(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	opts := store.AuditListOpts{
+		Page:    intParam(q.Get("page"), 1),
+		PerPage: intParam(q.Get("per_page"), 50),
+		ActorID: q.Get("actor_id"),
+		Action:  q.Get("action"),
+		Since:   int64(intParam(q.Get("since"), 0)),
+		Until:   int64(intParam(q.Get("until"), 0)),
+	}
+
+	entries, total, err := h.store.ListAuditEntries(r.Context(), opts)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"entries":  entries,
+		"total":    total,
+		"page":     opts.Page,
+		"per_page": opts.PerPage,
+	})
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func (h *Handler) assignRoleByName(ctx context.Context, userID, roleName string, orgID *string) error {

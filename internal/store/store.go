@@ -75,6 +75,10 @@ type Store interface {
 	GetTOSAcceptance(ctx context.Context, userID, version string) (*TOSAcceptance, error)
 	ListTOSAcceptances(ctx context.Context, userID string) ([]*TOSAcceptance, error)
 
+	// Audit Log (immutable — never deleted)
+	CreateAuditEntry(ctx context.Context, e *AuditEntry) error
+	ListAuditEntries(ctx context.Context, opts AuditListOpts) ([]*AuditEntry, int64, error)
+
 	// Migrations
 	Migrate(ctx context.Context) error
 	Close() error
@@ -158,4 +162,25 @@ type TOSAcceptance struct {
 	NameTyped  string
 	AcceptedAt int64
 	IPAddress  string
+}
+
+type AuditEntry struct {
+	ID         string
+	Timestamp  int64
+	ActorID    string
+	Action     string
+	TargetType string
+	TargetID   string
+	Metadata   string // JSON blob
+	IPAddress  string
+	RequestID  string
+}
+
+type AuditListOpts struct {
+	Page    int
+	PerPage int
+	ActorID string
+	Action  string
+	Since   int64
+	Until   int64
 }
