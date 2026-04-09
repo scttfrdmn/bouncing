@@ -52,6 +52,9 @@ type WebhookConfig = iconfig.WebhookConfig
 // DirectoryConfig controls external directory sync (e.g. Google Workspace).
 type DirectoryConfig = iconfig.DirectoryConfig
 
+// RateLimitConfig controls the per-IP token-bucket rate limiter.
+type RateLimitConfig = iconfig.RateLimitConfig
+
 // Load reads and parses the bouncing.yaml at path, applies defaults, and
 // validates required fields.
 func Load(path string) (*Config, error) { return iconfig.Load(path) }

@@ -8,37 +8,45 @@ import (
 func (s *Server) registerRoutes(mux *http.ServeMux) {
 	authMiddleware := RequireAuth(s.issuer)
 	apiKeyMiddleware := RequireAPIKey(s.apiKey.Validate)
+	rl := s.rateLimiter.Middleware
 
-	// ── JWKS ──────────────────────────────────────────────────────────────────
+	// ── JWKS (not rate-limited — cacheable public endpoint) ───────────────────
 	mux.Handle("GET /.well-known/jwks.json", s.jwksHandler)
-	mux.Handle("GET /auth/jwks", s.jwksHandler)
 
-	// ── OAuth ─────────────────────────────────────────────────────────────────
+	// ── Auth routes (rate-limited) ────────────────────────────────────────────
+	authMux := http.NewServeMux()
+
+	// JWKS alias under /auth/
+	authMux.Handle("GET /auth/jwks", s.jwksHandler)
+
+	// OAuth
 	for _, h := range s.oauthHandlers {
 		provider := h.ProviderName()
-		mux.HandleFunc("GET /auth/oauth/"+provider, h.BeginOAuth)
-		mux.HandleFunc("GET /auth/oauth/"+provider+"/callback", h.CallbackOAuth)
+		authMux.HandleFunc("GET /auth/oauth/"+provider, h.BeginOAuth)
+		authMux.HandleFunc("GET /auth/oauth/"+provider+"/callback", h.CallbackOAuth)
 	}
 
-	// ── WebAuthn ──────────────────────────────────────────────────────────────
+	// WebAuthn
 	if s.webAuthnHandler != nil {
-		mux.HandleFunc("POST /auth/webauthn/register/begin", s.webAuthnHandler.RegisterBegin)
-		mux.HandleFunc("POST /auth/webauthn/register/finish", s.webAuthnHandler.RegisterFinish)
-		mux.HandleFunc("POST /auth/webauthn/login/begin", s.webAuthnHandler.LoginBegin)
-		mux.HandleFunc("POST /auth/webauthn/login/finish", s.webAuthnHandler.LoginFinish)
+		authMux.HandleFunc("POST /auth/webauthn/register/begin", s.webAuthnHandler.RegisterBegin)
+		authMux.HandleFunc("POST /auth/webauthn/register/finish", s.webAuthnHandler.RegisterFinish)
+		authMux.HandleFunc("POST /auth/webauthn/login/begin", s.webAuthnHandler.LoginBegin)
+		authMux.HandleFunc("POST /auth/webauthn/login/finish", s.webAuthnHandler.LoginFinish)
 	}
 
-	// ── Session endpoints ─────────────────────────────────────────────────────
-	mux.HandleFunc("POST /auth/refresh", s.handleRefresh)
-	mux.HandleFunc("POST /auth/logout", s.handleLogout)
-	mux.Handle("GET /auth/me", authMiddleware(http.HandlerFunc(s.handleMe)))
-	mux.HandleFunc("GET /auth/providers", s.handleProviders)
+	// Session
+	authMux.HandleFunc("POST /auth/refresh", s.handleRefresh)
+	authMux.HandleFunc("POST /auth/logout", s.handleLogout)
+	authMux.Handle("GET /auth/me", authMiddleware(http.HandlerFunc(s.handleMe)))
+	authMux.HandleFunc("GET /auth/providers", s.handleProviders)
 
-	// ── Legal gate ────────────────────────────────────────────────────────────
+	// Legal gate
 	if s.legalHandler != nil {
-		mux.HandleFunc("GET /auth/agree", s.legalHandler.ShowAgreement)
-		mux.HandleFunc("POST /auth/agree", s.legalHandler.RecordAgreement)
+		authMux.HandleFunc("GET /auth/agree", s.legalHandler.ShowAgreement)
+		authMux.HandleFunc("POST /auth/agree", s.legalHandler.RecordAgreement)
 	}
+
+	mux.Handle("/auth/", rl(authMux))
 
 	// ── Management API ────────────────────────────────────────────────────────
 	mgmt := http.NewServeMux()

@@ -50,6 +50,7 @@ type Server struct {
 	apiKey          *mgmt.APIKey
 	hooks           *hooks.Dispatcher
 	i18n            *i18n.Localizer
+	rateLimiter     *RateLimiter
 	stop            chan struct{} // closed on shutdown
 }
 
@@ -165,6 +166,9 @@ func New(cfg *config.Config, st store.Store, log *slog.Logger) (*Server, error) 
 			Log:        log,
 		})
 	}
+
+	// ── Rate limiter ──────────────────────────────────────────────────────────
+	s.rateLimiter = NewRateLimiter(cfg.RateLimit.Rate, cfg.RateLimit.Burst, s.stop)
 
 	// ── Management handler ────────────────────────────────────────────────────
 	s.mgmtHandler = mgmt.NewHandler(mgmt.Config{

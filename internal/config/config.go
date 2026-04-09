@@ -17,10 +17,17 @@ type Config struct {
 	Auth      AuthConfig       `yaml:"auth"`
 	Session   SessionConfig    `yaml:"session"`
 	RBAC      RBACConfig       `yaml:"rbac"`
+	RateLimit RateLimitConfig  `yaml:"rate_limit"`
 	Legal     *LegalConfig     `yaml:"legal,omitempty"`
 	I18n      I18nConfig       `yaml:"i18n"`
 	Webhooks  []WebhookConfig  `yaml:"webhooks"`
 	Directory *DirectoryConfig `yaml:"directory,omitempty"`
+}
+
+// RateLimitConfig controls the per-IP token-bucket rate limiter for auth endpoints.
+type RateLimitConfig struct {
+	Rate  float64 `yaml:"rate"`  // tokens per second (default: 10)
+	Burst int     `yaml:"burst"` // max bucket size (default: 20)
 }
 
 type StoreConfig struct {
@@ -168,5 +175,11 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.Store.Path == "" {
 		cfg.Store.Path = "./data/bouncing.db"
+	}
+	if cfg.RateLimit.Rate == 0 {
+		cfg.RateLimit.Rate = 10
+	}
+	if cfg.RateLimit.Burst == 0 {
+		cfg.RateLimit.Burst = 20
 	}
 }

@@ -30,6 +30,22 @@ func TestLoadMinimal(t *testing.T) {
 	}
 }
 
+func TestLoadRateLimitDefaults(t *testing.T) {
+	t.Parallel()
+	path := writeYAML(t, `base_url: "https://auth.example.com"`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.RateLimit.Rate != 10 {
+		t.Errorf("RateLimit.Rate: got %v, want 10", cfg.RateLimit.Rate)
+	}
+	if cfg.RateLimit.Burst != 20 {
+		t.Errorf("RateLimit.Burst: got %v, want 20", cfg.RateLimit.Burst)
+	}
+}
+
 func TestLoadAppliesDefaults(t *testing.T) {
 	t.Parallel()
 	path := writeYAML(t, `base_url: "https://auth.example.com"`)
