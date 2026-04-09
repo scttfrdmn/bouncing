@@ -207,7 +207,7 @@ func (s *Server) Start(ctx context.Context) error {
 	s.registerRoutes(mux)
 
 	corsOrigins := s.cfg.Auth.CORSOrigins
-	handler := RequestID(Logger(s.log)(CORS(corsOrigins)(mux)))
+	handler := SecurityHeaders(MaxBodySize(1<<20)(RequestID(Logger(s.log)(CORS(corsOrigins)(mux)))))
 
 	srv := &http.Server{
 		Addr:         s.cfg.Listen,

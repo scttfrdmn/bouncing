@@ -639,3 +639,82 @@ func TestCreateListDeleteWebhook(t *testing.T) {
 		t.Errorf("DeleteWebhook status: got %d", wDel.Code)
 	}
 }
+
+// ── Input validation tests ──────────────────────────────────────────────────
+
+func TestCreateWebhookInvalidURL(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler(t)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "/manage/webhooks",
+		jsonBody(map[string]any{
+			"url":    "ftp://invalid.com/hook",
+			"events": []string{"user.created"},
+		}))
+	r.Header.Set("Content-Type", "application/json")
+	h.CreateWebhook(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", w.Code)
+	}
+}
+
+func TestCreateRoleBadName(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler(t)
+
+	cases := []struct {
+		name  string
+		input string
+	}{
+		{"special chars", "admin@root"},
+		{"spaces", "my role"},
+		{"too long", string(make([]byte, 65))},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/manage/roles",
+				jsonBody(map[string]any{"name": tc.input, "permissions": []string{"read"}}))
+			r.Header.Set("Content-Type", "application/json")
+			h.CreateRole(w, r)
+			if w.Code != http.StatusBadRequest {
+				t.Errorf("status for %q: got %d, want 400", tc.input, w.Code)
+			}
+		})
+	}
+}
+
+func TestCreateOrgBadSlug(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler(t)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "/manage/orgs",
+		jsonBody(map[string]any{"name": "Test Org", "slug": "BAD SLUG!"}))
+	r.Header.Set("Content-Type", "application/json")
+	h.CreateOrg(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", w.Code)
+	}
+}
+
+func TestInviteUserImprovedEmailValidation(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestHandler(t)
+
+	badEmails := []string{"noatsign", "@nodomain", "user@", "user@nodot"}
+	for _, email := range badEmails {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/manage/users/invite",
+			jsonBody(map[string]string{"email": email}))
+		r.Header.Set("Content-Type", "application/json")
+		h.InviteUser(w, r)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("email %q: got %d, want 400", email, w.Code)
+		}
+	}
+}

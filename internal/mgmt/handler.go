@@ -132,7 +132,7 @@ func (h *Handler) InviteUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_request", "email required")
 		return
 	}
-	if !strings.Contains(req.Email, "@") {
+	if !validEmail(req.Email) {
 		writeError(w, http.StatusBadRequest, "invalid_email_format", "invalid email format")
 		return
 	}
@@ -181,7 +181,7 @@ func (h *Handler) BulkImport(w http.ResponseWriter, r *http.Request) {
 	var errs []string
 
 	for _, item := range req.Users {
-		if !strings.Contains(item.Email, "@") {
+		if !validEmail(item.Email) {
 			errs = append(errs, item.Email+": invalid email format")
 			continue
 		}
@@ -304,6 +304,10 @@ func (h *Handler) CreateRole(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
 		writeError(w, http.StatusBadRequest, "invalid_request", "name required")
+		return
+	}
+	if !validRoleName(req.Name) {
+		writeError(w, http.StatusBadRequest, "invalid_name", "role name must be 1-64 alphanumeric/hyphen/underscore characters")
 		return
 	}
 
@@ -441,6 +445,10 @@ func (h *Handler) CreateOrg(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_request", "name required")
 		return
 	}
+	if req.Slug != "" && !validSlug(req.Slug) {
+		writeError(w, http.StatusBadRequest, "invalid_slug", "slug must be 1-64 lowercase alphanumeric/hyphen characters")
+		return
+	}
 
 	o := &store.Org{Name: req.Name, Slug: req.Slug}
 	if err := h.store.CreateOrg(ctx, o); err != nil {
@@ -531,6 +539,10 @@ func (h *Handler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_request", "url required")
 		return
 	}
+	if !validURL(req.URL) {
+		writeError(w, http.StatusBadRequest, "invalid_url", "url must start with https:// or http://")
+		return
+	}
 	if len(req.Events) == 0 {
 		req.Events = []string{"*"}
 	}
@@ -614,6 +626,41 @@ func intParam(s string, def int) int {
 		return def
 	}
 	return v
+}
+
+func validEmail(email string) bool {
+	at := strings.LastIndex(email, "@")
+	return at > 0 && at < len(email)-1 && strings.Contains(email[at+1:], ".")
+}
+
+func validURL(u string) bool {
+	return strings.HasPrefix(u, "https://") || strings.HasPrefix(u, "http://")
+}
+
+func validSlug(s string) bool {
+	if len(s) == 0 || len(s) > 64 {
+		return false
+	}
+	for _, c := range s {
+		ok := (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-'
+		if !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func validRoleName(s string) bool {
+	if len(s) == 0 || len(s) > 64 {
+		return false
+	}
+	for _, c := range s {
+		ok := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_'
+		if !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func dedupeStrings(ss []string) []string {
