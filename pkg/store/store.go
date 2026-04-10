@@ -7,7 +7,11 @@
 // implement custom storage backends such as Turso/libSQL.
 package store
 
-import istore "github.com/scttfrdmn/bouncing/internal/store"
+import (
+	"database/sql"
+
+	istore "github.com/scttfrdmn/bouncing/internal/store"
+)
 
 // Store is the central storage interface. Every backend implements this.
 type Store = istore.Store
@@ -53,3 +57,8 @@ var ErrNotFound = istore.ErrNotFound //nolint:gochecknoglobals
 
 // IsNotFound reports whether err wraps ErrNotFound.
 func IsNotFound(err error) bool { return istore.IsNotFound(err) }
+
+// NewFromDB wraps an existing *sql.DB as a Store. This allows external
+// consumers to provide their own database connection (e.g. via the libsql
+// driver for Turso) while reusing all SQL logic and migrations.
+func NewFromDB(db *sql.DB) Store { return istore.NewStoreFromDB(db) }

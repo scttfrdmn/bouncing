@@ -50,6 +50,14 @@ func NewSQLite(path string) (*SQLiteStore, error) {
 	return &SQLiteStore{db: db}, nil
 }
 
+// NewStoreFromDB wraps an existing *sql.DB as a SQLiteStore. This allows
+// external consumers (e.g. bouncing-managed) to provide their own database
+// connection (e.g. via the libsql driver for Turso) while reusing all SQL
+// logic and migrations.
+func NewStoreFromDB(db *sql.DB) *SQLiteStore {
+	return &SQLiteStore{db: db}
+}
+
 func (s *SQLiteStore) Migrate(ctx context.Context) error {
 	return migrate(ctx, s.db)
 }
