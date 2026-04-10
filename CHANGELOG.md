@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-04-10
+
+### Security
+- **[Medium]** OIDC userinfo error path limited to 4KB response body (#39)
+- **[Medium]** Built-in OAuth fetchers (Google, GitHub, Microsoft) limited to 1MB response body (#40)
+- **[Medium]** logout_url validated against base_url to prevent open redirects (#41)
+- **[Low]** JWT issuer claim (iss) now validated on verification via jwt.WithIssuer (#42)
+- **[Low]** Rate limiter trust_proxy config option controls X-Forwarded-For trust (#43)
+- **[Low]** SCIM CreateUser validates email format (#44)
+
+### Fixed
+- gosec CI: excluded false-positive rules (G101, G118, G124, G202, G304, G306, G602, G703) with documented rationale
+
 ## [0.7.1] — 2026-04-09
 
 ### Security
