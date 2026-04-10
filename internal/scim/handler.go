@@ -132,6 +132,10 @@ func (h *Handler) PatchUser(w http.ResponseWriter, r *http.Request) {
 			}
 		case "userName":
 			if email, ok := op.Value.(string); ok {
+				if !validEmail(email) {
+					writeSCIMError(w, http.StatusBadRequest, "invalidValue", "userName must be a valid email")
+					return
+				}
 				u.Email = email
 			}
 		}

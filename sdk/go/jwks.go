@@ -57,6 +57,9 @@ func (c *jwksCache) verify(ctx context.Context, tokenStr string) (*Session, erro
 	if err := json.Unmarshal(headerBytes, &header); err != nil {
 		return nil, fmt.Errorf("%w: parse header: %v", errInvalidToken, err)
 	}
+	if header.Alg != "" && header.Alg != "EdDSA" {
+		return nil, fmt.Errorf("%w: unsupported algorithm %q", errInvalidToken, header.Alg)
+	}
 
 	// Decode payload.
 	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
@@ -155,7 +158,7 @@ func (c *jwksCache) refresh(ctx context.Context) error {
 		return fmt.Errorf("%w: status %d", errInvalidJWKS, resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return fmt.Errorf("bouncing: read JWKS: %w", err)
 	}

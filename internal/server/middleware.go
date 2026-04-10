@@ -93,14 +93,19 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
 			if origin != "" {
-				if len(allowedOrigins) == 0 || originAllowed(origin, allowedOrigins) {
+				if len(allowedOrigins) == 0 {
+					// Dev mode: allow all origins but WITHOUT credentials.
+					// Browsers block credentialed requests with Access-Control-Allow-Origin: *.
+					w.Header().Set("Access-Control-Allow-Origin", "*")
+				} else if originAllowed(origin, allowedOrigins) {
+					// Production: reflect the allowed origin WITH credentials.
 					w.Header().Set("Access-Control-Allow-Origin", origin)
 					w.Header().Set("Vary", "Origin")
+					w.Header().Set("Access-Control-Allow-Credentials", "true")
 				}
 			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
