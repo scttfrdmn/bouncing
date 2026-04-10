@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-04-09
+
+### Security
+- **[Critical]** WebAuthn registration endpoints now require authentication; users can only register credentials for their own account (#30)
+- **[Critical]** SCIM bearer token comparison changed to constant-time via SHA256 hash + hmac.Equal (#31)
+- **[High]** Auto-generated API key no longer appears in structured logs; printed to stderr only (#32)
+- **[High]** Refresh token rotation serialized with mutex to prevent race condition producing duplicate tokens (#33)
+- **[High]** OIDC discovery rejects non-https:// issuer URLs; config rejects webhook URLs without http(s):// scheme (#34)
+- **[Medium]** OAuth redirect_url and error_url validated against base_url to prevent open redirects (#35)
+- **[Medium]** OIDC discovery and userinfo responses limited to 1MB to prevent OOM (#36)
+- **[Medium]** OAuth state HMAC secret derived with domain separator instead of raw API key (#37)
+- **[Low]** Dashboard mutation handlers require HX-Request header to prevent cross-site form attacks (#38)
+
 ## [0.7.0] — 2026-04-09
 
 ### Added
