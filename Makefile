@@ -26,6 +26,20 @@ vet:
 vulncheck:
 	govulncheck ./...
 
+gosec:
+	gosec -exclude=G101,G118,G124,G202,G304,G306,G602,G703 ./...
+
+scan-fs:
+	trivy fs --severity HIGH,CRITICAL .
+
+scan-iac:
+	trivy config --severity HIGH,CRITICAL .
+
+sast:
+	semgrep scan --config=auto --error .
+
+security: vulncheck gosec scan-fs sast  ## Run all security checks
+
 release:
 	goreleaser release --clean
 
