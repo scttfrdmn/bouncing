@@ -57,6 +57,7 @@ jobs:
         run: pnpm install && pnpm build
 
       - name: Publish
+        if: ${{ secrets.NPM_TOKEN != '' }}
         working-directory: sdk/js
         run: pnpm publish --filter "@bouncing/*" --access public --no-git-checks
         env:
