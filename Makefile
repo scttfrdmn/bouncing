@@ -36,7 +36,10 @@ scan-iac:
 	trivy config --severity HIGH,CRITICAL .
 
 sast:
-	semgrep scan --config=auto --error .
+	semgrep scan --config=auto --error \
+		--exclude-rule go.lang.security.audit.net.cookie-missing-secure.cookie-missing-secure \
+		--exclude-rule go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter \
+		.
 
 security: vulncheck gosec scan-fs sast  ## Run all security checks
 

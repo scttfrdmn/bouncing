@@ -7,6 +7,7 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /bin/bouncing ./cmd/bouncing
 
 FROM scratch
 COPY --from=builder /bin/bouncing /bouncing
+USER 65534:65534
 EXPOSE 3117
 ENTRYPOINT ["/bouncing"]
 CMD ["serve"]

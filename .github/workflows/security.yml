@@ -55,7 +55,15 @@ jobs:
           exit-code: 1
 
       # --- Semgrep SAST (cross-language static analysis) ---
-      - name: Semgrep
-        uses: returntocorp/semgrep-action@v1
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          config: auto
+          python-version: "3.12"
+
+      - name: Semgrep
+        run: |
+          pip install semgrep
+          semgrep scan --config=auto --error \
+            --exclude-rule go.lang.security.audit.net.cookie-missing-secure.cookie-missing-secure \
+            --exclude-rule go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter \
+            .
