@@ -180,7 +180,8 @@ func New(cfg *config.Config, st store.Store, log *slog.Logger) (*Server, error) 
 	}
 
 	// ── Rate limiter ──────────────────────────────────────────────────────────
-	s.rateLimiter = NewRateLimiter(cfg.RateLimit.Rate, cfg.RateLimit.Burst, s.stop)
+	trustProxy := cfg.RateLimit.TrustProxy != nil && *cfg.RateLimit.TrustProxy
+	s.rateLimiter = NewRateLimiter(cfg.RateLimit.Rate, cfg.RateLimit.Burst, trustProxy, s.stop)
 
 	// ── Management handler ────────────────────────────────────────────────────
 	s.mgmtHandler = mgmt.NewHandler(mgmt.Config{

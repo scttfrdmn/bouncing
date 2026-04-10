@@ -9,7 +9,7 @@ import (
 
 func newTestLimiter(rate float64, burst int) *RateLimiter {
 	stop := make(chan struct{})
-	return NewRateLimiter(rate, burst, stop)
+	return NewRateLimiter(rate, burst, true, stop)
 }
 
 func okHandler() http.Handler {
@@ -159,13 +159,13 @@ func TestClientIPFallback(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("GET", "/", nil)
 	r.RemoteAddr = "192.168.1.1:5555"
-	if got := clientIP(r); got != "192.168.1.1" {
+	if got := clientIPWith(r, true); got != "192.168.1.1" {
 		t.Errorf("clientIP: got %q, want 192.168.1.1", got)
 	}
 
 	r2 := httptest.NewRequest("GET", "/", nil)
 	r2.RemoteAddr = "badaddr"
-	if got := clientIP(r2); got != "badaddr" {
+	if got := clientIPWith(r2, true); got != "badaddr" {
 		t.Errorf("clientIP fallback: got %q, want badaddr", got)
 	}
 }

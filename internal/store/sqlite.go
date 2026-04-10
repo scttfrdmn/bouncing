@@ -117,7 +117,7 @@ func (s *SQLiteStore) ListUsers(ctx context.Context, opts ListOpts) ([]*User, er
 	}
 	args = append(args, perPage, (page-1)*perPage)
 
-	rows, err := s.db.QueryContext(ctx,
+	rows, err := s.db.QueryContext(ctx, //nolint:gosec // G202 — where clause uses parameterized ? placeholders
 		`SELECT id, email, name, avatar_url, status, auth_method, created_at, last_login
 		 FROM users`+where+` ORDER BY created_at DESC LIMIT ? OFFSET ?`, args...)
 	if err != nil {
@@ -778,7 +778,7 @@ func (s *SQLiteStore) ListAuditEntries(ctx context.Context, opts AuditListOpts) 
 	}
 
 	// Fetch page.
-	query := "SELECT id, timestamp, actor_id, action, target_type, target_id, metadata, ip_address, request_id FROM audit_entries" + where + " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+	query := "SELECT id, timestamp, actor_id, action, target_type, target_id, metadata, ip_address, request_id FROM audit_entries" + where + " ORDER BY timestamp DESC LIMIT ? OFFSET ?" //nolint:gosec // G202 — where clause uses parameterized ? placeholders
 	args = append(args, perPage, (page-1)*perPage)
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {

@@ -116,7 +116,7 @@ func generateKey(dir string) (*KeySet, error) {
 }
 
 func loadKeyPair(kid, privPath, _ string) (*KeySet, error) {
-	privPEM, err := os.ReadFile(privPath)
+	privPEM, err := os.ReadFile(privPath) //nolint:gosec // G304 — path from directory listing, not user input
 	if err != nil {
 		return nil, fmt.Errorf("session.loadKeyPair: read priv: %w", err)
 	}
@@ -158,7 +158,7 @@ func writePubKey(path string, pub ed25519.PublicKey) error {
 		return fmt.Errorf("session.writePubKey: marshal: %w", err)
 	}
 	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})
-	if err := os.WriteFile(path, pemBytes, 0644); err != nil {
+	if err := os.WriteFile(path, pemBytes, 0644); err != nil { //nolint:gosec // G306 — public key intentionally world-readable
 		return fmt.Errorf("session.writePubKey: write: %w", err)
 	}
 	return nil

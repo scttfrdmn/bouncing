@@ -44,7 +44,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, event string, payload any) {
 			continue
 		}
 		wh := wh
-		go d.send(context.Background(), wh, event, payload)
+		go d.send(context.Background(), wh, event, payload) //nolint:gosec // G118 — intentional: webhooks fire async after request completes
 	}
 	// Store-persisted webhooks (registered via management API).
 	if d.store != nil {
@@ -58,7 +58,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, event string, payload any) {
 				continue
 			}
 			sw := sw
-			go d.send(context.Background(), config.WebhookConfig{
+			go d.send(context.Background(), config.WebhookConfig{ //nolint:gosec // G118 — async webhook dispatch
 				URL:    sw.URL,
 				Events: sw.Events,
 				Secret: sw.Secret,

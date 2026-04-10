@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/scttfrdmn/bouncing/internal/store"
@@ -52,6 +53,10 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	if req.UserName == "" {
 		writeSCIMError(w, http.StatusBadRequest, "invalidValue", "userName is required")
+		return
+	}
+	if !validEmail(req.UserName) {
+		writeSCIMError(w, http.StatusBadRequest, "invalidValue", "userName must be a valid email")
 		return
 	}
 
@@ -249,6 +254,11 @@ func userToSCIM(u *store.User) scimUser {
 	su.Meta.Created = fmt.Sprintf("%d", u.CreatedAt)
 	su.Meta.Location = "/scim/v2/Users/" + u.ID
 	return su
+}
+
+func validEmail(email string) bool {
+	at := strings.LastIndex(email, "@")
+	return at > 0 && at < len(email)-1 && strings.Contains(email[at+1:], ".")
 }
 
 func writeSCIMError(w http.ResponseWriter, status int, scimType, detail string) {

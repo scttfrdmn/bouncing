@@ -78,6 +78,11 @@ func (i *Issuer) Verify(_ context.Context, tokenStr string) (*Claims, error) {
 			lastErr = err
 			continue
 		}
+		// Validate issuer claim matches this instance.
+		if err := jwt.Validate(token, jwt.WithIssuer(i.iss)); err != nil {
+			lastErr = err
+			continue
+		}
 		return extractClaims(token), nil
 	}
 	return nil, fmt.Errorf("session.Verify: %w", lastErr)

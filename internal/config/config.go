@@ -34,8 +34,9 @@ type SCIMConfig struct {
 
 // RateLimitConfig controls the per-IP token-bucket rate limiter for auth endpoints.
 type RateLimitConfig struct {
-	Rate  float64 `yaml:"rate"`  // tokens per second (default: 10)
-	Burst int     `yaml:"burst"` // max bucket size (default: 20)
+	Rate       float64 `yaml:"rate"`        // tokens per second (default: 10)
+	Burst      int     `yaml:"burst"`       // max bucket size (default: 20)
+	TrustProxy *bool   `yaml:"trust_proxy"` // trust X-Forwarded-For for client IP (default: true)
 }
 
 type StoreConfig struct {
@@ -125,7 +126,7 @@ type DirectoryConfig struct {
 
 // Load reads and parses bouncing.yaml from path.
 func Load(path string) (*Config, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304 — path is CLI argument
 	if err != nil {
 		return nil, fmt.Errorf("config: open %s: %w", path, err)
 	}
@@ -165,6 +166,9 @@ func validate(cfg *Config) error {
 	}
 	if cfg.Auth.ErrorURL != "" && !isRelativeOrSameOrigin(cfg.Auth.ErrorURL, cfg.BaseURL) {
 		return fmt.Errorf("config: auth.error_url must be a relative path or start with base_url")
+	}
+	if cfg.Auth.LogoutURL != "" && !isRelativeOrSameOrigin(cfg.Auth.LogoutURL, cfg.BaseURL) {
+		return fmt.Errorf("config: auth.logout_url must be a relative path or start with base_url")
 	}
 	return nil
 }
@@ -206,5 +210,9 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.RateLimit.Burst == 0 {
 		cfg.RateLimit.Burst = 20
+	}
+	if cfg.RateLimit.TrustProxy == nil {
+		t := true
+		cfg.RateLimit.TrustProxy = &t
 	}
 }

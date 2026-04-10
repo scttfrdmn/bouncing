@@ -198,7 +198,7 @@ func fetchGoogle(client *http.Client) (*UserInfo, error) {
 		return nil, fmt.Errorf("google userinfo: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 
 	var v struct {
 		Sub     string `json:"sub"`
@@ -218,7 +218,7 @@ func fetchGitHub(client *http.Client) (*UserInfo, error) {
 		return nil, fmt.Errorf("github user: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 
 	var v struct {
 		ID        int    `json:"id"`
@@ -258,7 +258,7 @@ func fetchGitHubPrimaryEmail(client *http.Client) (string, error) {
 		return "", fmt.Errorf("github emails: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 
 	var emails []struct {
 		Email    string `json:"email"`
@@ -282,7 +282,7 @@ func fetchMicrosoft(client *http.Client) (*UserInfo, error) {
 		return nil, fmt.Errorf("microsoft graph: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 
 	var v struct {
 		ID                string `json:"id"`

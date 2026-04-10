@@ -76,7 +76,7 @@ i18n:
   default_locale: en
 `, redirectURL, logoutURL)
 
-	if err := os.WriteFile("bouncing.yaml", []byte(yml), 0644); err != nil {
+	if err := os.WriteFile("bouncing.yaml", []byte(yml), 0644); err != nil { //nolint:gosec // G306 — config file intentionally world-readable
 		return fmt.Errorf("write config: %w", err)
 	}
 

@@ -121,7 +121,7 @@ func usersImport(st store.Store, args []string) error {
 		return fmt.Errorf("usage: bouncing users import <file.csv>")
 	}
 
-	f, err := os.Open(args[0])
+	f, err := os.Open(args[0]) //nolint:gosec // G703 — CLI argument, not user-controlled web input
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
 	}

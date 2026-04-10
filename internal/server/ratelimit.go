@@ -13,10 +13,11 @@ import (
 // RateLimiter implements a per-IP token-bucket rate limiter.
 // Each IP gets a bucket of burst tokens that refills at rate tokens/second.
 type RateLimiter struct {
-	rate    float64  // tokens per second
-	burst   int      // max bucket size
-	buckets sync.Map // string → *bucket
-	stop    chan struct{}
+	rate       float64  // tokens per second
+	burst      int      // max bucket size
+	trustProxy bool     // trust X-Forwarded-For for client IP
+	buckets    sync.Map // string → *bucket
+	stop       chan struct{}
 }
 
 type bucket struct {
@@ -27,11 +28,12 @@ type bucket struct {
 
 // NewRateLimiter creates a RateLimiter and starts a background cleanup goroutine.
 // The cleanup goroutine exits when stop is closed.
-func NewRateLimiter(rate float64, burst int, stop chan struct{}) *RateLimiter {
+func NewRateLimiter(rate float64, burst int, trustProxy bool, stop chan struct{}) *RateLimiter {
 	rl := &RateLimiter{
-		rate:  rate,
-		burst: burst,
-		stop:  stop,
+		rate:       rate,
+		burst:      burst,
+		trustProxy: trustProxy,
+		stop:       stop,
 	}
 	go rl.cleanup()
 	return rl
@@ -45,7 +47,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 		return next // disabled
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := clientIP(r)
+		ip := clientIPWith(r, rl.trustProxy)
 		if !rl.allow(ip) {
 			retryAfter := math.Ceil(1.0 / rl.rate)
 			w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter)))
@@ -108,14 +110,15 @@ func (rl *RateLimiter) cleanup() {
 	}
 }
 
-// clientIP extracts the client IP address from the request.
-// It checks X-Forwarded-For first (first entry), then falls back to RemoteAddr.
-func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+// clientIPWith extracts the client IP. Only checks X-Forwarded-For if trustProxy is true.
+func clientIPWith(r *http.Request, trustProxy bool) string {
+	if trustProxy {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		parts := strings.SplitN(xff, ",", 2)
 		ip := strings.TrimSpace(parts[0])
 		if ip != "" {
-			return ip
+				return ip
+			}
 		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
