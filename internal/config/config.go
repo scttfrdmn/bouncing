@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -154,7 +155,22 @@ func validate(cfg *Config) error {
 	default:
 		return fmt.Errorf("config: invalid access mode %q, must be open|domain-restricted|invite-only", cfg.Access.Mode)
 	}
+	for i, wh := range cfg.Webhooks {
+		if !strings.HasPrefix(wh.URL, "https://") && !strings.HasPrefix(wh.URL, "http://") {
+			return fmt.Errorf("config: webhooks[%d].url must use https:// or http:// scheme", i)
+		}
+	}
+	if cfg.Auth.RedirectURL != "" && !isRelativeOrSameOrigin(cfg.Auth.RedirectURL, cfg.BaseURL) {
+		return fmt.Errorf("config: auth.redirect_url must be a relative path or start with base_url")
+	}
+	if cfg.Auth.ErrorURL != "" && !isRelativeOrSameOrigin(cfg.Auth.ErrorURL, cfg.BaseURL) {
+		return fmt.Errorf("config: auth.error_url must be a relative path or start with base_url")
+	}
 	return nil
+}
+
+func isRelativeOrSameOrigin(u, baseURL string) bool {
+	return strings.HasPrefix(u, "/") || strings.HasPrefix(u, baseURL)
 }
 
 func applyDefaults(cfg *Config) {

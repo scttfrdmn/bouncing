@@ -10,7 +10,7 @@ import (
 
 func TestDiscoverValid(t *testing.T) {
 	t.Parallel()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(OIDCConfig{
 			Issuer:                "https://idp.example.com",
 			AuthorizationEndpoint: "https://idp.example.com/authorize",
@@ -20,6 +20,11 @@ func TestDiscoverValid(t *testing.T) {
 		})
 	}))
 	defer srv.Close()
+
+	// Override the default HTTP client to trust the test TLS cert.
+	origTransport := http.DefaultTransport
+	http.DefaultTransport = srv.Client().Transport
+	defer func() { http.DefaultTransport = origTransport }()
 
 	cfg, err := Discover(context.Background(), srv.URL)
 	if err != nil {
@@ -109,12 +114,19 @@ func TestFetchOIDCUserInfoError(t *testing.T) {
 	}
 }
 
+func TestDiscoverRejectsHTTP(t *testing.T) {
+	t.Parallel()
+	_, err := Discover(context.Background(), "http://evil.internal")
+	if err == nil {
+		t.Error("expected error for http:// issuer_url")
+	}
+}
+
 func TestNewProviderOIDC(t *testing.T) {
 	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
-		// Use the request Host to build self-referential URLs.
-		base := "http://" + r.Host
+		base := "https://" + r.Host
 		_ = json.NewEncoder(w).Encode(OIDCConfig{
 			Issuer:                base,
 			AuthorizationEndpoint: base + "/authorize",
@@ -122,8 +134,12 @@ func TestNewProviderOIDC(t *testing.T) {
 			UserinfoEndpoint:      base + "/userinfo",
 		})
 	})
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewTLSServer(mux)
 	defer srv.Close()
+
+	origTransport := http.DefaultTransport
+	http.DefaultTransport = srv.Client().Transport
+	defer func() { http.DefaultTransport = origTransport }()
 
 	cfg := OAuthProviderCfg{
 		ClientID:     "corp-client",

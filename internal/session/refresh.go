@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/scttfrdmn/bouncing/internal/store"
@@ -24,6 +25,7 @@ var ErrTokenExpired = errors.New("token expired")
 type RefreshManager struct {
 	store store.Store
 	ttl   time.Duration
+	mu    sync.Mutex // serializes Rotate to prevent race conditions
 }
 
 // NewRefreshManager creates a RefreshManager.
@@ -54,6 +56,9 @@ func (m *RefreshManager) Issue(ctx context.Context, userID string) (string, erro
 // If rawToken has already been consumed (replay), the entire user's token
 // family is revoked and ErrTokenReplayed is returned.
 func (m *RefreshManager) Rotate(ctx context.Context, rawToken string) (newToken, userID string, err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	hash := hashToken(rawToken)
 
 	t, err := m.store.GetRefreshToken(ctx, hash)

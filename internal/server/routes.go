@@ -30,8 +30,8 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// WebAuthn
 	if s.webAuthnHandler != nil {
-		authMux.HandleFunc("POST /auth/webauthn/register/begin", s.webAuthnHandler.RegisterBegin)
-		authMux.HandleFunc("POST /auth/webauthn/register/finish", s.webAuthnHandler.RegisterFinish)
+		authMux.Handle("POST /auth/webauthn/register/begin", authMiddleware(http.HandlerFunc(s.webAuthnHandler.RegisterBegin)))
+		authMux.Handle("POST /auth/webauthn/register/finish", authMiddleware(http.HandlerFunc(s.webAuthnHandler.RegisterFinish)))
 		authMux.HandleFunc("POST /auth/webauthn/login/begin", s.webAuthnHandler.LoginBegin)
 		authMux.HandleFunc("POST /auth/webauthn/login/finish", s.webAuthnHandler.LoginFinish)
 	}

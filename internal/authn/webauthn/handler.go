@@ -77,6 +77,17 @@ func (h *Handler) RegisterBegin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Verify the authenticated user matches the requested user_id.
+	authedUID, authErr := h.authenticatedUserID(r)
+	if authErr != nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		return
+	}
+	if authedUID != req.UserID {
+		writeError(w, http.StatusForbidden, "forbidden", "can only register credentials for your own account")
+		return
+	}
+
 	u, err := h.store.GetUser(ctx, req.UserID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "user_not_found", "user not found")
@@ -111,6 +122,17 @@ func (h *Handler) RegisterFinish(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
 		writeError(w, http.StatusBadRequest, "invalid_request", "user_id required")
+		return
+	}
+
+	// Verify the authenticated user matches the requested user_id.
+	authedUID, authErr := h.authenticatedUserID(r)
+	if authErr != nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		return
+	}
+	if authedUID != userID {
+		writeError(w, http.StatusForbidden, "forbidden", "can only register credentials for your own account")
 		return
 	}
 
@@ -340,6 +362,29 @@ func writeError(w http.ResponseWriter, code int, errCode, msg string) {
 			"message": msg,
 		},
 	})
+}
+
+// authenticatedUserID extracts and verifies the JWT from the request,
+// returning the authenticated user's ID. Used to ensure users can only
+// register credentials for their own account.
+func (h *Handler) authenticatedUserID(r *http.Request) (string, error) {
+	var token string
+	if auth := r.Header.Get("Authorization"); len(auth) > 7 && auth[:7] == "Bearer " {
+		token = auth[7:]
+	}
+	if token == "" {
+		if c, err := r.Cookie("bouncing_access"); err == nil {
+			token = c.Value
+		}
+	}
+	if token == "" {
+		return "", fmt.Errorf("no auth token")
+	}
+	claims, err := h.issuer.Verify(r.Context(), token)
+	if err != nil {
+		return "", err
+	}
+	return claims.UserID, nil
 }
 
 func setAuthCookies(w http.ResponseWriter, accessToken, refreshToken string, secure bool) {

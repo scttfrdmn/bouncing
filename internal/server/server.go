@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -90,8 +91,7 @@ func New(cfg *config.Config, st store.Store, log *slog.Logger) (*Server, error) 
 			return nil, fmt.Errorf("server.New: generate api key: %w", err)
 		}
 		rawAPIKey = "bnc_api_" + base64.RawURLEncoding.EncodeToString(b)
-		log.Warn("BOUNCING_API_KEY not set — generated ephemeral key; save it now",
-			"api_key", rawAPIKey)
+		_, _ = fmt.Fprintf(os.Stderr, "\n  BOUNCING_API_KEY not set — generated ephemeral key:\n  %s\n  Set this as BOUNCING_API_KEY before restarting.\n\n", rawAPIKey)
 	}
 	s.apiKey = mgmt.NewAPIKey(rawAPIKey)
 
@@ -128,8 +128,10 @@ func New(cfg *config.Config, st store.Store, log *slog.Logger) (*Server, error) 
 			return nil, fmt.Errorf("server.New: oauth provider %q: %w", name, err)
 		}
 
-		// HMAC secret for state: derive from API key hash
-		stateMgr := oauth.NewStateManager([]byte(rawAPIKey))
+		// HMAC secret for state: derived from API key with domain separator
+		// so a leaked API key doesn't directly compromise CSRF protection.
+		stateSecret := sha256.Sum256([]byte("bouncing-oauth-state:" + rawAPIKey))
+		stateMgr := oauth.NewStateManager(stateSecret[:])
 
 		errorURL := cfg.Auth.ErrorURL
 		if errorURL == "" {

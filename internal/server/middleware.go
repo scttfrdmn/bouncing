@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"log/slog"
 	"net/http"
@@ -189,17 +191,24 @@ func RequireAdmin(issuer *session.Issuer) func(http.Handler) http.Handler {
 }
 
 // RequireSCIMToken validates the Bearer token against a static SCIM token.
+// Uses constant-time comparison via SHA256 hash + hmac.Equal.
 func RequireSCIMToken(token string) func(http.Handler) http.Handler {
+	tokenHash := sha256Hex(token)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			key := bearerToken(r)
-			if key == "" || key != token {
+			if key == "" || !hmac.Equal([]byte(sha256Hex(key)), []byte(tokenHash)) {
 				writeError(w, http.StatusUnauthorized, ErrCodeUnauthorized, "valid SCIM token required")
 				return
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func sha256Hex(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
 }
 
 func bearerToken(r *http.Request) string {

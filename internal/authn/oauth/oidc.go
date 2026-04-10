@@ -20,7 +20,11 @@ type OIDCConfig struct {
 }
 
 // Discover fetches the OIDC discovery document from {issuerURL}/.well-known/openid-configuration.
+// issuerURL must use the https:// scheme to prevent SSRF against internal services.
 func Discover(ctx context.Context, issuerURL string) (*OIDCConfig, error) {
+	if !strings.HasPrefix(issuerURL, "https://") {
+		return nil, fmt.Errorf("oidc.Discover: issuer_url must use https:// scheme, got %q", issuerURL)
+	}
 	wellKnown := strings.TrimRight(issuerURL, "/") + "/.well-known/openid-configuration"
 
 	req, err := http.NewRequestWithContext(ctx, "GET", wellKnown, nil)
@@ -40,7 +44,7 @@ func Discover(ctx context.Context, issuerURL string) (*OIDCConfig, error) {
 	}
 
 	var cfg OIDCConfig
-	if err := json.NewDecoder(resp.Body).Decode(&cfg); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("oidc.Discover: decode: %w", err)
 	}
 
@@ -65,7 +69,7 @@ func fetchOIDCUserInfo(client *http.Client, userinfoEndpoint string) (*UserInfo,
 		return nil, fmt.Errorf("oidc userinfo: %d %s", resp.StatusCode, string(body))
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return nil, fmt.Errorf("oidc userinfo read: %w", err)
 	}

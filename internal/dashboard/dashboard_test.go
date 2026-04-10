@@ -130,6 +130,7 @@ func TestDeleteUserHTMX(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("DELETE", "/dashboard/users/"+u.ID, nil)
 	r.SetPathValue("id", u.ID)
+	r.Header.Set("HX-Request", "true")
 	h.DeleteUser(w, r)
 
 	if w.Code != http.StatusOK {
@@ -145,6 +146,7 @@ func TestCreateRoleHTMX(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("POST", "/dashboard/roles", strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Header.Set("HX-Request", "true")
 	h.CreateRole(w, r)
 
 	if w.Code != http.StatusOK {
@@ -165,6 +167,7 @@ func TestDeleteRoleHTMX(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("DELETE", "/dashboard/roles/"+role.ID, nil)
 	r.SetPathValue("id", role.ID)
+	r.Header.Set("HX-Request", "true")
 	h.DeleteRole(w, r)
 
 	if w.Code != http.StatusOK {

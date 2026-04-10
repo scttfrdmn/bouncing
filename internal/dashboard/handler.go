@@ -198,6 +198,9 @@ func (h *Handler) Audit(w http.ResponseWriter, r *http.Request) {
 
 // DeleteUser handles DELETE /dashboard/users/{id}
 func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	if !requireHTMX(w, r) {
+		return
+	}
 	id := r.PathValue("id")
 	if err := h.store.DeleteUser(r.Context(), id); err != nil {
 		h.log.Warn("dashboard: delete user", "id", id, "err", err)
@@ -207,6 +210,9 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 // CreateRole handles POST /dashboard/roles
 func (h *Handler) CreateRole(w http.ResponseWriter, r *http.Request) {
+	if !requireHTMX(w, r) {
+		return
+	}
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
@@ -224,6 +230,9 @@ func (h *Handler) CreateRole(w http.ResponseWriter, r *http.Request) {
 
 // DeleteRole handles DELETE /dashboard/roles/{id}
 func (h *Handler) DeleteRole(w http.ResponseWriter, r *http.Request) {
+	if !requireHTMX(w, r) {
+		return
+	}
 	id := r.PathValue("id")
 	_ = h.store.DeleteRole(r.Context(), id)
 	w.WriteHeader(http.StatusOK)
@@ -231,6 +240,9 @@ func (h *Handler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 
 // AssignRole handles POST /dashboard/users/{id}/roles
 func (h *Handler) AssignRole(w http.ResponseWriter, r *http.Request) {
+	if !requireHTMX(w, r) {
+		return
+	}
 	ctx := r.Context()
 	userID := r.PathValue("id")
 	if err := r.ParseForm(); err != nil {
@@ -251,6 +263,9 @@ func (h *Handler) AssignRole(w http.ResponseWriter, r *http.Request) {
 
 // RevokeRole handles DELETE /dashboard/users/{id}/roles/{role_id}
 func (h *Handler) RevokeRole(w http.ResponseWriter, r *http.Request) {
+	if !requireHTMX(w, r) {
+		return
+	}
 	ctx := r.Context()
 	userID := r.PathValue("id")
 	roleID := r.PathValue("role_id")
@@ -261,6 +276,9 @@ func (h *Handler) RevokeRole(w http.ResponseWriter, r *http.Request) {
 
 // CreateOrg handles POST /dashboard/orgs
 func (h *Handler) CreateOrg(w http.ResponseWriter, r *http.Request) {
+	if !requireHTMX(w, r) {
+		return
+	}
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
@@ -278,6 +296,9 @@ func (h *Handler) CreateOrg(w http.ResponseWriter, r *http.Request) {
 
 // CreateWebhook handles POST /dashboard/webhooks
 func (h *Handler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
+	if !requireHTMX(w, r) {
+		return
+	}
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
@@ -296,6 +317,9 @@ func (h *Handler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
 
 // DeleteWebhook handles DELETE /dashboard/webhooks/{id}
 func (h *Handler) DeleteWebhook(w http.ResponseWriter, r *http.Request) {
+	if !requireHTMX(w, r) {
+		return
+	}
 	id := r.PathValue("id")
 	_ = h.store.DeleteWebhook(r.Context(), id)
 	w.WriteHeader(http.StatusOK)
@@ -356,6 +380,15 @@ func (h *Handler) renderUserRolesSection(w http.ResponseWriter, r *http.Request,
 		"AvailableRoles": allRoles,
 		"Agreements":     nil,
 	})
+}
+
+// requireHTMX checks that the request came from HTMX (prevents cross-site form attacks).
+func requireHTMX(w http.ResponseWriter, r *http.Request) bool {
+	if r.Header.Get("HX-Request") != "true" {
+		http.Error(w, "Forbidden — HTMX request required", http.StatusForbidden)
+		return false
+	}
+	return true
 }
 
 func (h *Handler) serverError(w http.ResponseWriter, op string, err error) {
