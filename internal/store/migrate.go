@@ -55,8 +55,25 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("migrate: read %s: %w", entry.Name(), err)
 		}
 
-		if _, err := db.ExecContext(ctx, string(data)); err != nil {
-			return fmt.Errorf("migrate: apply %s: %w", entry.Name(), err)
+		// Split on semicolons and execute each statement individually.
+		// Required for Turso/libSQL which only executes the first statement per ExecContext call.
+		for _, stmt := range strings.Split(string(data), ";") {
+			lines := strings.Split(stmt, "\n")
+			var clean []string
+			for _, line := range lines {
+				trimmed := strings.TrimSpace(line)
+				if trimmed == "" || strings.HasPrefix(trimmed, "--") {
+					continue
+				}
+				clean = append(clean, line)
+			}
+			stmt = strings.TrimSpace(strings.Join(clean, "\n"))
+			if stmt == "" {
+				continue
+			}
+			if _, err := db.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("migrate: apply %s: %w", entry.Name(), err)
+			}
 		}
 
 		if _, err := db.ExecContext(ctx,
